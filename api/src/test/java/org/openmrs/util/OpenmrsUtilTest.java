@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,11 +36,13 @@ import java.util.Locale;
 import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.Collection;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
 import org.openmrs.GlobalProperty;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
@@ -75,7 +78,7 @@ public class OpenmrsUtilTest extends BaseContextSensitiveTest {
 	/**
 	 * test the collection contains method
 	 * 
-	 * @see OpenmrsUtil#collectionContains(Collection<*>,Object)
+	 * @see OpenmrsUtil#collectionContains(Collection,Object)
 	 */
 	@Test
 	public void collectionContains_shouldUseEqualsMethodForComparisonInsteadOfCompareToGivenListCollection()
@@ -105,7 +108,7 @@ public class OpenmrsUtilTest extends BaseContextSensitiveTest {
 	/**
 	 * test the collection contains method
 	 * 
-	 * @see OpenmrsUtil#collectionContains(Collection<*>,Object)
+	 * @see OpenmrsUtil#collectionContains(Collection,Object)
 	 */
 	@Test
 	public void collectionContains_shouldUseEqualsMethodForComparisonInsteadOfCompareToGivenSortedSetCollection()
@@ -680,7 +683,7 @@ public class OpenmrsUtilTest extends BaseContextSensitiveTest {
 	
 	@Test
 	public void storeProperties_shouldEscapeSlashes() throws IOException {
-		Charset utf8 = Charset.forName("UTF-8");
+		Charset utf8 = StandardCharsets.UTF_8;
 		String expectedProperty = "blacklistRegex";
 		String expectedValue = "[^\\p{InBasicLatin}\\p{InLatin1Supplement}]";
 		Properties properties = new Properties();
@@ -753,5 +756,5 @@ public class OpenmrsUtilTest extends BaseContextSensitiveTest {
 		assertTrue(IOUtils.contentEquals(expectedByteArrayInputStream, byteArrayInputStreamFromOutputStream));
 		verify(output, times(1)).close();
 	}
-
+	
 }

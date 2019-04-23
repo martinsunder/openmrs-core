@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmrs.api.context.Context;
 import org.openmrs.util.PrivilegeConstants;
 import org.slf4j.Logger;
@@ -22,7 +22,10 @@ import org.slf4j.LoggerFactory;
 
 public class SchedulerUtil {
 	
-	private static Logger log = LoggerFactory.getLogger(SchedulerUtil.class);
+	private SchedulerUtil() {
+	}
+	
+	private static final Logger log = LoggerFactory.getLogger(SchedulerUtil.class);
 	
 	/**
 	 * Start the scheduler given the following start up properties.
@@ -177,7 +180,7 @@ public class SchedulerUtil {
 				}
 				
 				// The time between successive runs (e.g. 24 hours)
-				long repeatInterval = taskDefinition.getRepeatInterval().longValue();
+				long repeatInterval = taskDefinition.getRepeatInterval();
 				if (repeatInterval == 0) {
 					// task is one-shot so just return the start time
 					return firstTime;

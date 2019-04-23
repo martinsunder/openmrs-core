@@ -21,7 +21,7 @@ import org.openmrs.api.APIException;
  * 
  * @since 1.12
  */
-public class OrderGroup extends BaseOpenmrsData {
+public class OrderGroup extends BaseChangeableOpenmrsData {
 	
 	public static final long serialVersionUID = 72232L;
 	
@@ -96,7 +96,7 @@ public class OrderGroup extends BaseOpenmrsData {
 	 */
 	public List<Order> getOrders() {
 		if (orders == null) {
-			orders = new ArrayList<Order>();
+			orders = new ArrayList<>();
 		}
 		return orders;
 	}
@@ -107,9 +107,7 @@ public class OrderGroup extends BaseOpenmrsData {
 	 * @param orders the orders to set
 	 */
 	public void setOrders(List<Order> orders) {
-		for (Order order : orders) {
-			addOrder(order);
-		}
+		this.orders = orders;
 	}
 	
 	/**
@@ -119,6 +117,18 @@ public class OrderGroup extends BaseOpenmrsData {
 	 */
 	public void addOrder(Order order) {
 		this.addOrder(order, null);
+	}
+	
+	/**
+	 * Adds {@link Order}s to existing Order list
+	 * 
+	 * @param orders
+	 * @since 2.2
+	 */
+	public void addOrders(List<Order> orders) {
+		for (Order order : orders) {
+			addOrder(order);
+		}
 	}
 	
 	/**
@@ -132,6 +142,9 @@ public class OrderGroup extends BaseOpenmrsData {
 		if (order == null || getOrders().contains(order)) {
 			return;
 		}
+                
+                order.setOrderGroup(this);  
+                 
 		Integer listIndex = findListIndexForGivenPosition(position);
 		getOrders().add(listIndex, order);
 		if (order.getSortWeight() == null) {

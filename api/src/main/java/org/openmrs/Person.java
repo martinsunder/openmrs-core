@@ -15,10 +15,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.hibernate.search.annotations.ContainedIn;
@@ -37,11 +37,11 @@ import org.springframework.util.StringUtils;
  * 
  * @see org.openmrs.Patient
  */
-public class Person extends BaseOpenmrsData {
+public class Person extends BaseChangeableOpenmrsData {
 	
 	public static final long serialVersionUID = 2L;
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(Person.class);
 
 	@DocumentId
 	protected Integer personId;
@@ -71,6 +71,8 @@ public class Person extends BaseOpenmrsData {
 	private Date deathDate;
 	
 	private Concept causeOfDeath;
+	
+	private String causeOfDeathNonCoded;
 	
 	private User personCreator;
 	
@@ -131,10 +133,10 @@ public class Person extends BaseOpenmrsData {
 		birthtime = person.getBirthDateTime();
 		birthdateEstimated = person.getBirthdateEstimated();
 		deathdateEstimated = person.getDeathdateEstimated();
-		dead = person.isDead();
+		dead = person.getDead();
 		deathDate = person.getDeathDate();
 		causeOfDeath = person.getCauseOfDeath();
-		
+		causeOfDeathNonCoded = person.getCauseOfDeathNonCoded();
 		// base creator/voidedBy/changedBy info is not copied here
 		// because that is specific to and will be recreated
 		// by the subobject upon save
@@ -326,6 +328,29 @@ public class Person extends BaseOpenmrsData {
 	}
 	
 	/**
+	 * This method returns the non coded cause of death
+	 * 
+	 * @return non coded cause of death
+	 * @since 2.2.0
+	 * 
+	 */
+	public String getCauseOfDeathNonCoded() {
+		return this.causeOfDeathNonCoded;
+	}
+	
+	/**
+	 * This method sets the non coded cause of death with the value given as parameter
+	 * 
+	 * @param causeOfDeathNonCoded is a String that describes as text the cause of death
+	 * @since 2.2.0
+	 * @should not fail with null causeOfDeathNonCoded
+	 * @should set the attribute causeOfDeathNonCoded with the given parameter
+	 */
+	public void setCauseOfDeathNonCoded(String causeOfDeathNonCoded) { 
+		this.causeOfDeathNonCoded = causeOfDeathNonCoded;
+	}
+	
+	/**
 	 * @return list of known addresses for person
 	 * @see org.openmrs.PersonAddress
 	 * @should not get voided addresses
@@ -333,7 +358,7 @@ public class Person extends BaseOpenmrsData {
 	 */
 	public Set<PersonAddress> getAddresses() {
 		if (addresses == null) {
-			addresses = new TreeSet<PersonAddress>();
+			addresses = new TreeSet<>();
 		}
 		return this.addresses;
 	}
@@ -354,7 +379,7 @@ public class Person extends BaseOpenmrsData {
 	 */
 	public Set<PersonName> getNames() {
 		if (names == null) {
-			names = new TreeSet<PersonName>();
+			names = new TreeSet<>();
 		}
 		return this.names;
 	}
@@ -376,7 +401,7 @@ public class Person extends BaseOpenmrsData {
 	 */
 	public Set<PersonAttribute> getAttributes() {
 		if (attributes == null) {
-			attributes = new TreeSet<PersonAttribute>();
+			attributes = new TreeSet<>();
 		}
 		return this.attributes;
 	}
@@ -389,7 +414,7 @@ public class Person extends BaseOpenmrsData {
 	 * @should not fail with null attributes
 	 */
 	public List<PersonAttribute> getActiveAttributes() {
-		List<PersonAttribute> attrs = new Vector<PersonAttribute>();
+		List<PersonAttribute> attrs = new ArrayList<>();
 		for (PersonAttribute attr : getAttributes()) {
 			if (!attr.getVoided()) {
 				attrs.add(attr);
@@ -433,7 +458,8 @@ public class Person extends BaseOpenmrsData {
 		
 		for (PersonAttribute currentAttribute : getActiveAttributes()) {
 			if (currentAttribute.equals(newAttribute)) {
-				return; // if we have the same PersonAttributeId, don't add the new attribute
+				// if we have the same PersonAttributeId, don't add the new attribute
+				return; 
 			} else if (currentAttribute.getAttributeType().equals(newAttribute.getAttributeType())) {
 				if (currentAttribute.getValue() != null && currentAttribute.getValue().equals(newAttribute.getValue())) {
 					// this person already has this attribute
@@ -559,7 +585,7 @@ public class Person extends BaseOpenmrsData {
 	 * @should return all PersonAttributes with matching attributeType names
 	 */
 	public List<PersonAttribute> getAttributes(String attributeName) {
-		List<PersonAttribute> ret = new Vector<PersonAttribute>();
+		List<PersonAttribute> ret = new ArrayList<>();
 		
 		for (PersonAttribute attribute : getActiveAttributes()) {
 			PersonAttributeType type = attribute.getAttributeType();
@@ -580,7 +606,7 @@ public class Person extends BaseOpenmrsData {
 	 * @should return list of person attributes based on AttributeTypeId
 	 */
 	public List<PersonAttribute> getAttributes(Integer attributeTypeId) {
-		List<PersonAttribute> ret = new Vector<PersonAttribute>();
+		List<PersonAttribute> ret = new ArrayList<>();
 		
 		for (PersonAttribute attribute : getActiveAttributes()) {
 			if (attributeTypeId.equals(attribute.getAttributeType().getPersonAttributeTypeId())) {
@@ -598,7 +624,7 @@ public class Person extends BaseOpenmrsData {
 	 * @param personAttributeType
 	 */
 	public List<PersonAttribute> getAttributes(PersonAttributeType personAttributeType) {
-		List<PersonAttribute> ret = new Vector<PersonAttribute>();
+		List<PersonAttribute> ret = new ArrayList<>();
 		for (PersonAttribute attribute : getAttributes()) {
 			if (personAttributeType.equals(attribute.getAttributeType()) && !attribute.getVoided()) {
 				ret.add(attribute);
@@ -620,7 +646,7 @@ public class Person extends BaseOpenmrsData {
 			log.debug("Current Person Attributes: \n" + printAttributes());
 		}
 		
-		attributeMap = new HashMap<String, PersonAttribute>();
+		attributeMap = new HashMap<>();
 		for (PersonAttribute attribute : getActiveAttributes()) {
 			attributeMap.put(attribute.getAttributeType().getName(), attribute);
 		}
@@ -644,7 +670,7 @@ public class Person extends BaseOpenmrsData {
 			log.debug("Current Person Attributes: \n" + printAttributes());
 		}
 		
-		allAttributeMap = new HashMap<String, PersonAttribute>();
+		allAttributeMap = new HashMap<>();
 		for (PersonAttribute attribute : getAttributes()) {
 			allAttributeMap.put(attribute.getAttributeType().getName(), attribute);
 		}
@@ -678,7 +704,7 @@ public class Person extends BaseOpenmrsData {
 		if (name != null) {
 			name.setPerson(this);
 			if (names == null) {
-				names = new TreeSet<PersonName>();
+				names = new TreeSet<>();
 			}
 			if (!OpenmrsUtil.collectionContains(names, name)) {
 				names.add(name);
@@ -709,7 +735,7 @@ public class Person extends BaseOpenmrsData {
 		if (address != null) {
 			address.setPerson(this);
 			if (addresses == null) {
-				addresses = new TreeSet<PersonAddress>();
+				addresses = new TreeSet<>();
 			}
 			if (!OpenmrsUtil.collectionContains(addresses, address) && !address.isBlank()) {
 				addresses.add(address);

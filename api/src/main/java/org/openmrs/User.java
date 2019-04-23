@@ -14,13 +14,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.api.context.Context;
 import org.openmrs.util.LocaleUtility;
 import org.openmrs.util.OpenmrsConstants;
@@ -36,11 +35,11 @@ import org.slf4j.LoggerFactory;
  * key-value pairs for either quick info or display specific info that needs to be persisted (like
  * locale preferences, search options, etc)
  */
-public class User extends BaseOpenmrsMetadata implements java.io.Serializable, Attributable<User> {
+public class User extends BaseChangeableOpenmrsMetadata implements java.io.Serializable, Attributable<User> {
 	
 	public static final long serialVersionUID = 2L;
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(User.class);
 	
 	// Fields
 	
@@ -51,6 +50,8 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 	private String systemId;
 	
 	private String username;
+	
+	private String email;
 	
 	private Set<Role> roles;
 	
@@ -107,8 +108,8 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 		Set<Role> tmproles = getAllRoles();
 		
 		// loop over the roles and check each for the privilege
-		for (Iterator<Role> i = tmproles.iterator(); i.hasNext();) {
-			if (i.next().hasPrivilege(privilege)) {
+		for (Role tmprole : tmproles) {
+			if (tmprole.hasPrivilege(privilege)) {
 				return true;
 			}
 		}
@@ -177,12 +178,12 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 	 * @return Collection of complete Privileges this user has
 	 */
 	public Collection<Privilege> getPrivileges() {
-		Set<Privilege> privileges = new HashSet<Privilege>();
+		Set<Privilege> privileges = new HashSet<>();
 		Set<Role> tmproles = getAllRoles();
 		
 		Role role;
-		for (Iterator<Role> i = tmproles.iterator(); i.hasNext();) {
-			role = i.next();
+		for (Role tmprole : tmproles) {
+			role = tmprole;
 			Collection<Privilege> privs = role.getPrivileges();
 			if (privs != null) {
 				privileges.addAll(privs);
@@ -202,11 +203,11 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 	 */
 	public Set<Role> getAllRoles() {
 		// the user's immediate roles
-		Set<Role> baseRoles = new HashSet<Role>();
+		Set<Role> baseRoles = new HashSet<>();
 		
 		// the user's complete list of roles including
 		// the parent roles of their immediate roles
-		Set<Role> totalRoles = new HashSet<Role>();
+		Set<Role> totalRoles = new HashSet<>();
 		if (getRoles() != null) {
 			baseRoles.addAll(getRoles());
 			totalRoles.addAll(getRoles());
@@ -225,9 +226,8 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 			log.error("Error converting roles for user: " + this);
 			log.error("baseRoles.class: " + baseRoles.getClass().getName());
 			log.error("baseRoles: " + baseRoles.toString());
-			Iterator<Role> iter = baseRoles.iterator();
-			while (iter.hasNext()) {
-				log.error("baseRole: '" + iter.next() + "'");
+			for (Role baseRole : baseRoles) {
+				log.error("baseRole: '" + baseRole + "'");
 			}
 		}
 		return totalRoles;
@@ -255,7 +255,7 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 	 */
 	public User addRole(Role role) {
 		if (roles == null) {
-			roles = new HashSet<Role>();
+			roles = new HashSet<>();
 		}
 		if (!roles.contains(role) && role != null) {
 			roles.add(role);
@@ -412,6 +412,22 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 		this.username = username;
 	}
 	
+	/**
+	 * @since 2.2
+	 * @return Returns the email.
+	 */
+	public String getEmail() {
+		return email;
+	}
+	
+ 	/**
+ 	 * @since 2.2
+	 * @param email The email to set.
+	 */
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	
 	@Override
 	public String toString() {
 		return StringUtils.isNotBlank(username) ? username : systemId;
@@ -422,7 +438,7 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 	 */
 	public Map<String, String> getUserProperties() {
 		if (userProperties == null) {
-			userProperties = new HashMap<String, String>();
+			userProperties = new HashMap<>();
 		}
 		return userProperties;
 	}
@@ -532,7 +548,7 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 		if ((proficientLocales == null)
 		        || (!OpenmrsUtil.nullSafeEquals(parsedProficientLocalesProperty, proficientLocalesProperty))) {
 			parsedProficientLocalesProperty = proficientLocalesProperty;
-			proficientLocales = new ArrayList<Locale>();
+			proficientLocales = new ArrayList<>();
 			if (proficientLocalesProperty != null) {
 				String[] proficientLocalesArray = proficientLocalesProperty.split(",");
 				for (String proficientLocaleSpec : proficientLocalesArray) {
@@ -554,7 +570,7 @@ public class User extends BaseOpenmrsMetadata implements java.io.Serializable, A
 		}
 		
 		// return a copy so that the list isn't changed by other processes
-		return new ArrayList<Locale>(proficientLocales);
+		return new ArrayList<>(proficientLocales);
 	}
 	
 	/**

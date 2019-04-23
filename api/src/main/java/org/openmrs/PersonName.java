@@ -9,14 +9,15 @@
  */
 package org.openmrs;
 
-import static org.apache.commons.lang.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.defaultString;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.hibernate.search.annotations.Analyzer;
 import org.hibernate.search.annotations.Boost;
@@ -25,7 +26,10 @@ import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.Fields;
 import org.hibernate.search.annotations.Indexed;
 import org.hibernate.search.annotations.IndexedEmbedded;
+import org.openmrs.api.APIException;
 import org.openmrs.api.db.hibernate.search.LuceneAnalyzers;
+import org.openmrs.layout.name.NameSupport;
+import org.openmrs.layout.name.NameTemplate;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.OpenmrsUtil;
 import org.slf4j.Logger;
@@ -36,7 +40,7 @@ import org.springframework.util.StringUtils;
  * A Person can have zero to n PersonName(s).
  */
 @Indexed
-public class PersonName extends BaseOpenmrsData implements java.io.Serializable, Cloneable, Comparable<PersonName> {
+public class PersonName extends BaseChangeableOpenmrsData implements java.io.Serializable, Cloneable, Comparable<PersonName> {
 	
 	public static final long serialVersionUID = 4353L;
 
@@ -143,7 +147,7 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 		if (pn == null) {
 			throw new IllegalArgumentException();
 		}
-		PersonName newName = new PersonName(Integer.valueOf(pn.getPersonNameId()));
+		PersonName newName = new PersonName(pn.getPersonNameId());
 		if (pn.getGivenName() != null) {
 			newName.setGivenName(String.valueOf(pn.getGivenName()));
 		}
@@ -183,10 +187,10 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 		}
 		
 		if (pn.getPreferred() != null) {
-			newName.setPreferred(pn.getPreferred().booleanValue());
+			newName.setPreferred(pn.getPreferred());
 		}
 		if (pn.getVoided() != null) {
-			newName.setVoided(pn.getVoided().booleanValue());
+			newName.setVoided(pn.getVoided());
 		}
 		
 		newName.setPerson(pn.getPerson());
@@ -399,7 +403,19 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	 * @should not put spaces around an empty middle name
 	 */
 	public String getFullName() {
-		List<String> temp = new ArrayList<String>();
+		NameTemplate nameTemplate = null;
+		try {
+			nameTemplate = NameSupport.getInstance().getDefaultLayoutTemplate();
+		}
+		catch (APIException ex) {
+			log.warn("No name layout format set");
+		}
+		
+		if (nameTemplate != null) {
+			return nameTemplate.format(this);
+		}
+
+		List<String> temp = new ArrayList<>();
 		if (StringUtils.hasText(getPrefix())) {
 			temp.add(getPrefix());
 		}
@@ -457,10 +473,6 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	}
 	
 	/**
-	 * TODO: the behaviour of this method needs to be controlled by some sort of global property
-	 * because an implementation can define how they want their names to look (which fields to
-	 * show/hide)
-	 * 
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 * @should return negative if other name is voided
 	 * @should return negative if this name is preferred
@@ -505,13 +517,15 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	 Provides a default comparator.
 	 @since 1.12
 	 **/
-	public static class DefaultComparator implements Comparator<PersonName> {
+	public static class DefaultComparator implements Comparator<PersonName>, Serializable {
+
+		private static final long serialVersionUID = 1L;
 		
 		@Override
 		public int compare(PersonName pn1, PersonName pn2) {
 			int ret = pn1.getVoided().compareTo(pn2.getVoided());
 			if (ret == 0) {
-				ret = pn2.isPreferred().compareTo(pn1.isPreferred());
+				ret = pn2.getPreferred().compareTo(pn1.getPreferred());
 			}
 			if (ret == 0) {
 				ret = OpenmrsUtil.compareWithNullAsGreatest(pn1.getFamilyName(), pn2.getFamilyName());

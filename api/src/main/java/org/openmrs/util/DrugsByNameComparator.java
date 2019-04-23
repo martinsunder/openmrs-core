@@ -9,22 +9,20 @@
  */
 package org.openmrs.util;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 import org.openmrs.Drug;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The Class DrugsByNameComparator. An Util class which sorts drug names while ignoring any
  * numericals or other characters contained in the string. It will ignore all except letters a-z and
  * A-Z.
  */
-public class DrugsByNameComparator implements Comparator<Drug> {
-	
-	/** The Constant log. */
-	private final static Logger log = LoggerFactory.getLogger(DrugsByNameComparator.class);
-	
+public class DrugsByNameComparator implements Comparator<Drug>, Serializable {
+
+	private static final long serialVersionUID = 1L;
+
 	/* (non-Jsdoc)
 	 * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
 	 */
@@ -61,7 +59,6 @@ public class DrugsByNameComparator implements Comparator<Drug> {
 	 * @return the string
 	 */
 	private String remove(String drugName) {
-		String cleanText = drugName.replaceAll("[^a-zA-Z]", "");
-		return cleanText;
+		return drugName.replaceAll("[^a-zA-Z]", "");
 	}
 }

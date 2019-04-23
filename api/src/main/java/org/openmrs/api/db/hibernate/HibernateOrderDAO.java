@@ -11,12 +11,12 @@ package org.openmrs.api.db.hibernate;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Calendar;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.FlushMode;
 import org.hibernate.LockOptions;
@@ -42,9 +42,12 @@ import org.openmrs.User;
 import org.openmrs.api.APIException;
 import org.openmrs.api.db.DAOException;
 import org.openmrs.api.db.OrderDAO;
+import org.openmrs.parameter.OrderSearchCriteria;
 import org.openmrs.util.OpenmrsConstants;
+import org.openmrs.util.OpenmrsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * This class should not be used directly. This is just a common implementation of the OrderDAO that
@@ -59,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HibernateOrderDAO implements OrderDAO {
 	
-	protected static final Logger log = LoggerFactory.getLogger(HibernateOrderDAO.class);
+	private static final Logger log = LoggerFactory.getLogger(HibernateOrderDAO.class);
 	
 	/**
 	 * Hibernate session factory
@@ -148,6 +151,46 @@ public class HibernateOrderDAO implements OrderDAO {
 		
 		return crit.list();
 	}
+
+	/**
+	 * @see org.openmrs.api.db.OrderDAO#getOrders(OrderSearchCriteria)
+	 */
+	@Override
+	public List<Order> getOrders(OrderSearchCriteria searchCriteria) {
+		Criteria crit = sessionFactory.getCurrentSession().createCriteria(Order.class);
+		
+		if (searchCriteria.getPatient() != null && searchCriteria.getPatient().getPatientId() != null) {
+			crit.add(Restrictions.eq("patient", searchCriteria.getPatient()));
+		}
+		if (searchCriteria.getCareSetting() != null && searchCriteria.getCareSetting().getId() != null) {
+			crit.add(Restrictions.eq("careSetting", searchCriteria.getCareSetting()));
+		}
+		if (searchCriteria.getConcepts() != null && !searchCriteria.getConcepts().isEmpty()) {
+			crit.add(Restrictions.in("concept", searchCriteria.getConcepts()));
+		}
+		if (searchCriteria.getOrderTypes() != null && !searchCriteria.getOrderTypes().isEmpty()) {
+			crit.add(Restrictions.in("orderType", searchCriteria.getOrderTypes()));
+		}
+		if (searchCriteria.getActivatedOnOrBeforeDate() != null) {
+			// set the date's time to the last millisecond of the date
+			Calendar cal = Calendar.getInstance();
+			cal.setTime(searchCriteria.getActivatedOnOrBeforeDate());
+			crit.add(Restrictions.le("dateActivated", OpenmrsUtil.getLastMomentOfDay(cal.getTime())));
+		}
+		if (searchCriteria.getActivatedOnOrAfterDate() != null) {
+			// set the date's time to 00:00:00.000
+			Calendar cal = Calendar.getInstance();
+			cal.setTime(searchCriteria.getActivatedOnOrAfterDate());
+			crit.add(Restrictions.ge("dateActivated", OpenmrsUtil.firstSecondOfDay(cal.getTime())));
+		}
+		if (!searchCriteria.getIncludeVoided()) {
+			crit.add(Restrictions.eq("voided", false));
+		}
+
+		crit.addOrder(org.hibernate.criterion.Order.desc("dateActivated"));
+		
+		return crit.list();
+	}
 	
 	/**
 	 * @see OrderDAO#getOrders(org.openmrs.Patient, org.openmrs.CareSetting, java.util.List,
@@ -173,11 +216,10 @@ public class HibernateOrderDAO implements OrderDAO {
 	 */
 	@Override
 	public Order getDiscontinuationOrder(Order order) {
-		Order discontinuationOrder = (Order) sessionFactory.getCurrentSession().createCriteria(Order.class).add(
+
+		return (Order) sessionFactory.getCurrentSession().createCriteria(Order.class).add(
 		    Restrictions.eq("previousOrder", order)).add(Restrictions.eq("action", Order.Action.DISCONTINUE)).add(
 		    Restrictions.eq("voided", false)).uniqueResult();
-		
-		return discontinuationOrder;
 	}
 	
 	@Override
@@ -272,7 +314,7 @@ public class HibernateOrderDAO implements OrderDAO {
 			        new Object[] { OpenmrsConstants.GP_NEXT_ORDER_NUMBER_SEED });
 		}
 		
-		Long gpNumericValue = null;
+		Long gpNumericValue;
 		try {
 			gpNumericValue = Long.parseLong(gpTextValue);
 		}
@@ -438,7 +480,7 @@ public class HibernateOrderDAO implements OrderDAO {
 		criteria.createAlias("concept.names", "conceptName");
 		criteria.add(Restrictions.ilike("conceptName.name", searchPhrase, MatchMode.ANYWHERE));
 		if (locale != null) {
-			List<Locale> locales = new ArrayList<Locale>(2);
+			List<Locale> locales = new ArrayList<>(2);
 			locales.add(locale);
 			//look in the broader locale too if exactLocale is false e.g en for en_GB
 			if (!exactLocale && StringUtils.isNotBlank(locale.getCountry())) {
@@ -478,19 +520,18 @@ public class HibernateOrderDAO implements OrderDAO {
 	public boolean isOrderFrequencyInUse(OrderFrequency orderFrequency) {
 		
 		Map<String, ClassMetadata> metadata = sessionFactory.getAllClassMetadata();
-		for (Iterator<ClassMetadata> i = metadata.values().iterator(); i.hasNext();) {
-			ClassMetadata classMetadata = i.next();
+		for (ClassMetadata classMetadata : metadata.values()) {
 			Class<?> entityClass = classMetadata.getMappedClass();
 			if (Order.class.equals(entityClass)) {
 				//ignore the org.openmrs.Order class itself
 				continue;
 			}
-			
+
 			if (!Order.class.isAssignableFrom(entityClass)) {
 				//not a sub class of Order
 				continue;
 			}
-			
+
 			String[] names = classMetadata.getPropertyNames();
 			for (String name : names) {
 				if (classMetadata.getPropertyType(name).getReturnedClass().equals(OrderFrequency.class)) {

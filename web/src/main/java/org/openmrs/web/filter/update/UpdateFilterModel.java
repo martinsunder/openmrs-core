@@ -14,8 +14,6 @@ import java.util.List;
 import org.openmrs.util.DatabaseUpdater;
 import org.openmrs.util.DatabaseUpdater.OpenMRSChangeSet;
 import org.openmrs.util.OpenmrsConstants;
-import org.openmrs.util.RoleConstants;
-import org.openmrs.web.WebConstants;
 import org.openmrs.web.filter.StartupFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,17 +25,7 @@ import org.slf4j.LoggerFactory;
  */
 public class UpdateFilterModel {
 	
-	// automatically given to the .vm files and used there
-	public String headerTemplate = "org/openmrs/web/filter/update/header.vm";
-	
-	// automatically given to the .vm files and used there
-	public String footerTemplate = "org/openmrs/web/filter/update/footer.vm";
-	
 	public List<OpenMRSChangeSet> changes = null;
-	
-	public String superuserrole = RoleConstants.SUPERUSER;
-	
-	public String setupPageUrl = WebConstants.SETUP_PAGE_URL;
 	
 	public static final String OPENMRS_VERSION = OpenmrsConstants.OPENMRS_VERSION_SHORT;
 	

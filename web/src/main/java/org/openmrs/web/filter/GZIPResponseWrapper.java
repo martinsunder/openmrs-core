@@ -29,7 +29,7 @@ public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 	
 	private static final Logger log = LoggerFactory.getLogger(GZIPResponseWrapper.class);
 	
-	protected HttpServletResponse origResponse = null;
+	protected HttpServletResponse origResponse;
 	
 	protected ServletOutputStream stream = null;
 	
@@ -43,7 +43,7 @@ public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 	}
 	
 	public ServletOutputStream createOutputStream() throws IOException {
-		return (new GZIPResponseStream(origResponse));
+		return new GZIPResponseStream(origResponse);
 	}
 	
 	public void finishResponse() {
@@ -78,7 +78,7 @@ public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 			stream = createOutputStream();
 		}
 		
-		return (stream);
+		return stream;
 	}
 	
 	@Override
@@ -90,7 +90,7 @@ public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 		}
 		
 		if (writer != null) {
-			return (writer);
+			return writer;
 		}
 		
 		if (stream != null) {
@@ -100,11 +100,7 @@ public class GZIPResponseWrapper extends HttpServletResponseWrapper {
 		stream = createOutputStream();
 		writer = new PrintWriter(new OutputStreamWriter(stream, origResponse.getCharacterEncoding()));
 		
-		return (writer);
-	}
-	
-	@Override
-	public void setContentLength(int length) {
+		return writer;
 	}
 	
 	/**

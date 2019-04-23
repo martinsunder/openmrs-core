@@ -11,10 +11,13 @@ package org.openmrs.hl7.impl;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -24,8 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
@@ -82,7 +85,7 @@ import ca.uhn.hl7v2.parser.GenericParser;
 @Transactional
 public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 	
-	private final Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(HL7ServiceImpl.class);
 	
 	private static HL7ServiceImpl instance;
 	
@@ -422,9 +425,8 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
  	 * @return error string. User can not be resolveUserId
  	 */
  	private String getFindingUserErrorMessage(String idNum, String fName, String gName) {
- 		String cantFindUser = "Error resolving user with id '" + idNum + "' family name '" + fName
- 				  + "' and given name '" + gName + "'";
- 		return cantFindUser;
+	    return "Error resolving user with id '" + idNum + "' family name '" + fName
+			      + "' and given name '" + gName + "'";
  	}
 	
 	/**
@@ -658,7 +660,6 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 					if (matchingIds == null || matchingIds.isEmpty()) {
 						// no matches
 						log.warn("NO matches found for " + hl7PersonId);
-						continue; // try next identifier
 					} else if (matchingIds.size() == 1) {
 						// unique match -- we're done
 						return matchingIds.get(0).getPatient();
@@ -666,13 +667,11 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 						// ambiguous identifier
 						log.debug("Ambiguous identifier in PID. " + matchingIds.size() + " matches for identifier '"
 						        + hl7PersonId + "' of type '" + pit + "'");
-						continue; // try next identifier
 					}
 				}
 				catch (Exception e) {
 					log.error("Error resolving patient identifier '" + hl7PersonId + "' for assigning authority '"
 					        + assigningAuthority + "'", e);
-					continue;
 				}
 			} else {
 				try {
@@ -890,7 +889,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 		person.setUuid(uuid);
 		
 		// Patient Identifiers
-		List<PatientIdentifier> goodIdentifiers = new ArrayList<PatientIdentifier>();
+		List<PatientIdentifier> goodIdentifiers = new ArrayList<>();
 		for (CX id : identifiers) {
 			
 			String assigningAuthority = id.getAssigningAuthority().getNamespaceID().getValue();
@@ -935,7 +934,6 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 				}
 			} else {
 				log.debug("NK1 contains identifier with no assigning authority");
-				continue;
 			}
 		}
 		if (!goodIdentifiers.isEmpty()) {
@@ -964,7 +962,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 			throw new HL7Exception("Missing gender in an NK1 segment");
 		}
 		gender = gender.toUpperCase();
-		if (!OpenmrsConstants.GENDER().containsKey(gender)) {
+		if (!OpenmrsConstants.GENDERS.contains(gender)) {
 			throw new HL7Exception("Unrecognized gender: " + gender);
 		}
 		person.setGender(gender);
@@ -1164,7 +1162,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 			        + ".txt");
 			
 			//write the hl7 data to the file
-			writer = new PrintWriter(fileToWriteTo);
+			writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(fileToWriteTo), StandardCharsets.UTF_8));
 			writer.write(hl7InArchive.getHL7Data());
 			
 			//check if there was an error while writing to the current file

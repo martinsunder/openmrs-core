@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.GlobalProperty;
 import org.openmrs.Person;
 import org.openmrs.PersonAddress;
@@ -55,7 +55,7 @@ import org.springframework.util.Assert;
 @Transactional
 public class PersonServiceImpl extends BaseOpenmrsService implements PersonService {
 	
-	private Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(PersonServiceImpl.class);
 	
 	private PersonDAO dao;
 	
@@ -160,7 +160,7 @@ public class PersonServiceImpl extends BaseOpenmrsService implements PersonServi
 			String newTypeName = type.getName();
 			
 			if (!oldTypeName.equals(newTypeName)) {
-				List<GlobalProperty> props = new ArrayList<GlobalProperty>();
+				List<GlobalProperty> props = new ArrayList<>();
 				
 				AdministrationService as = Context.getAdministrationService();
 				
@@ -171,7 +171,7 @@ public class PersonServiceImpl extends BaseOpenmrsService implements PersonServi
 				for (GlobalProperty prop : props) {
 					if (prop != null) {
 						String propVal = prop.getPropertyValue();
-						if (propVal != null && propVal.indexOf(oldTypeName) != -1) {
+						if (propVal != null && propVal.contains(oldTypeName)) {
 							prop.setPropertyValue(propVal.replaceFirst(oldTypeName, newTypeName));
 							as.saveGlobalProperty(prop);
 						}
@@ -733,7 +733,7 @@ public class PersonServiceImpl extends BaseOpenmrsService implements PersonServi
 		List<Relationship> relationships = Context.getPersonService().getRelationships(null, null, relType);
 		
 		// the map to return
-		Map<Person, List<Person>> ret = new HashMap<Person, List<Person>>();
+		Map<Person, List<Person>> ret = new HashMap<>();
 		
 		if (relationships != null) {
 			for (Relationship rel : relationships) {
@@ -742,7 +742,7 @@ public class PersonServiceImpl extends BaseOpenmrsService implements PersonServi
 				
 				List<Person> relList = ret.get(from);
 				if (relList == null) {
-					relList = new ArrayList<Person>();
+					relList = new ArrayList<>();
 				}
 				relList.add(to);
 				

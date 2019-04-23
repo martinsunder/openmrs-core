@@ -25,6 +25,7 @@ import org.openmrs.Patient;
 import org.openmrs.Provider;
 import org.openmrs.annotation.Authorized;
 import org.openmrs.api.db.OrderDAO;
+import org.openmrs.parameter.OrderSearchCriteria;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.PrivilegeConstants;
 
@@ -250,6 +251,18 @@ public interface OrderService extends OpenmrsService {
 	 */
 	@Authorized(PrivilegeConstants.GET_ORDERS)
 	public List<Order> getAllOrdersByPatient(Patient patient);
+
+	/**
+	 * Get all orders that match a variety of (nullable) criteria contained in the parameter object.
+	 * Each extra value for a parameter that is provided acts as an "and" and will reduce the number of results returned
+	 *
+	 * @param orderSearchCriteria the object containing search parameters
+	 * @return a list of orders matching the search criteria
+	 * @since 2.2
+	 * @should get the order matching the search criteria
+	 */
+	@Authorized( { PrivilegeConstants.GET_ORDERS })
+	public List<Order> getOrders(OrderSearchCriteria orderSearchCriteria);
 	
 	/**
 	 * Unvoid order record. Reverse a previous call to {@link #voidOrder(Order, String)}
@@ -264,6 +277,20 @@ public interface OrderService extends OpenmrsService {
 	 */
 	@Authorized(PrivilegeConstants.DELETE_ORDERS)
 	public Order unvoidOrder(Order order) throws APIException;
+	
+	/**
+	 * Updates the fulfillerStatus of an order and the related comment and finally persists it
+	 *
+	 * @param order order whose fulfillerStatus should be changed
+	 * @param orderFulfillerStatus describes the new Order.FulfillerStatus the order should be set to
+	 * @param fullFillerComment is a string which describes a comment that is set while changing the FulfillerStatus               
+	 * @return the Order that is updated with an according fulfillerStataus and fulFillerComment
+	 * @should set the new fulfillerStatus
+	 * @should set the new fulFillerComment
+	 * @should save the changed order
+	 */
+	@Authorized(PrivilegeConstants.EDIT_ORDERS)
+	public Order updateOrderFulfillerStatus(Order order, Order.FulfillerStatus orderFulfillerStatus, String fullFillerComment);
 	
 	/**
 	 * Gets the order identified by a given order number

@@ -118,11 +118,11 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		when(userContext.getAuthenticatedUser()).thenReturn(user);
 		when(userContext.isAuthenticated()).thenReturn(true);
 		
-		Map<String, SaveHandler> saveHandlers = new HashMap<String, SaveHandler>();
+		Map<String, SaveHandler> saveHandlers = new HashMap<>();
 		saveHandlers.put("saveHandler", saveHandler);
 		when(applicationContext.getBeansOfType(SaveHandler.class)).thenReturn(saveHandlers);
 		
-		Map<String, VoidHandler> voidHandlers = new HashMap<String, VoidHandler>();
+		Map<String, VoidHandler> voidHandlers = new HashMap<>();
 		voidHandlers.put("voidHandler", voidHandler);
 		when(applicationContext.getBeansOfType(VoidHandler.class)).thenReturn(voidHandlers);
 		
@@ -158,7 +158,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	@Test
 	public void getChildCollection_shouldGetValueOfGivenChildCollectionOnGivenField() throws Exception {
 		MiniOpenmrsObject oo = new MiniOpenmrsObject();
-		List<Location> locs = new ArrayList<Location>();
+		List<Location> locs = new ArrayList<>();
 		Location location = new Location(1);
 		locs.add(location);
 		oo.setLocations(locs);
@@ -173,7 +173,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	@Test
 	public void getChildCollection_shouldShouldBeAbleToGetAnnotatedPrivateFields() throws Exception {
 		MiniOpenmrsObject oo = new MiniOpenmrsObject();
-		oo.setLocations(new ArrayList<Location>());
+		oo.setLocations(new ArrayList<>());
 		Assert.assertNotNull(RequiredDataAdvice
 		        .getChildCollection(oo, MiniOpenmrsObject.class.getDeclaredField("locations")));
 	}
@@ -209,7 +209,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	@Test(expected = APIException.class)
 	public void getChildCollection_shouldThrowAPIExceptionIfGetterMethodNotFound() throws Exception {
 		ClassWithBadGetter oo = new ClassWithBadGetter();
-		oo.setMyLocations(new HashSet<Location>());
+		oo.setMyLocations(new HashSet<>());
 		RequiredDataAdvice.getChildCollection(oo, ClassWithBadGetter.class.getDeclaredField("locations"));
 	}
 	
@@ -259,7 +259,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	public void isOpenmrsObjectCollection_shouldReturnFalseIfFieldIsCollectionOfOtherObjects() throws Exception {
 		Assert.assertFalse(RequiredDataAdvice.isOpenmrsObjectCollection(ClassWithOtherFields.class
 		        .getDeclaredField("locales")));
-		List<String> list = new LinkedList<String>();
+		List<String> list = new LinkedList<>();
 		list.add("Test");
 		Assert.assertFalse(RequiredDataAdvice.isOpenmrsObjectCollection(list));
 		
@@ -287,7 +287,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	 */
 	@Test
 	public void isOpenmrsObjectCollection_shouldReturnTrueIfClassIsOpenmrsObjectList() throws Exception {
-		List<Location> locations = new ArrayList<Location>();
+		List<Location> locations = new ArrayList<>();
 		Location location = new Location();
 		locations.add(location);
 		Assert.assertTrue(RequiredDataAdvice.isOpenmrsObjectCollection(locations));
@@ -298,7 +298,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	 */
 	@Test
 	public void isOpenmrsObjectCollection_shouldReturnTrueIfClassIsOpenmrsObjectSet() throws Exception {
-		Set<Location> locations = new HashSet<Location>();
+		Set<Location> locations = new HashSet<>();
 		Location location = new Location();
 		locations.add(location);
 		Assert.assertTrue(RequiredDataAdvice.isOpenmrsObjectCollection(locations));
@@ -309,7 +309,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 	 */
 	@Test
 	public void isOpenmrsObjectCollection_shouldReturnFalseIfCollectionIsEmptyRegardlessOfTypeHeld() throws Exception {
-		Set<Location> locations = new HashSet<Location>();
+		Set<Location> locations = new HashSet<>();
 		Assert.assertFalse(RequiredDataAdvice.isOpenmrsObjectCollection(locations));
 	}
 	
@@ -537,7 +537,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, null, new WithAppropriatelyNamedMethod());
 		requiredDataAdvice.before(m, new Object[] {}, new WithAppropriatelyNamedMethod());
-		verify(saveHandler, never()).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(saveHandler, never()).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -547,7 +547,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		Method m = WithAppropriatelyNamedMethod.class.getMethod("saveSomeOpenmrsData", SomeOpenmrsData.class);
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, new Object[] { openmrsObject }, new WithAppropriatelyNamedMethod());
-		verify(saveHandler, times(1)).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(saveHandler, times(1)).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -557,7 +557,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		Method m = WithAppropriatelyNamedMethod.class.getMethod("saveSomeOpenmrsDataButNotReally", SomeOpenmrsData.class);
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, new Object[] { openmrsObject }, new WithAppropriatelyNamedMethod());
-		verify(saveHandler, never()).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(saveHandler, never()).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -567,8 +567,8 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		Method m = WithAppropriatelyNamedMethod.class.getMethod("saveSomeOpenmrsDatas", List.class);
 		List<SomeOpenmrsData> openmrsObjects = Arrays.asList(new SomeOpenmrsData(), new SomeOpenmrsData());
 		requiredDataAdvice.before(m, new Object[] { openmrsObjects }, new WithAppropriatelyNamedMethod());
-		verify(saveHandler, times(2)).handle(Matchers.<SomeOpenmrsData> anyObject(), Matchers.<User> anyObject(),
-		    Matchers.<Date> anyObject(), anyString());
+		verify(saveHandler, times(2)).handle(Matchers.anyObject(), Matchers.anyObject(),
+		    Matchers.anyObject(), anyString());
 	}
 	
 	@Test
@@ -578,7 +578,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, null, new WithAppropriatelyNamedMethod());
 		requiredDataAdvice.before(m, new Object[] {}, new WithAppropriatelyNamedMethod());
-		verify(voidHandler, never()).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(voidHandler, never()).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -588,7 +588,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		Method m = WithAppropriatelyNamedMethod.class.getMethod("voidSomeOpenmrsData", SomeOpenmrsData.class);
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, new Object[] { openmrsObject, "void reason" }, new WithAppropriatelyNamedMethod());
-		verify(voidHandler, times(1)).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(voidHandler, times(1)).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -599,8 +599,8 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		SomeOpenmrsData openmrsObjectSubClass = new SomeOpenmrsDataSubClass();
 		requiredDataAdvice.before(m, new Object[] { openmrsObjectSubClass, "void reason" },
 		    new WithAppropriatelyNamedMethod());
-		verify(voidHandler, times(1)).handle(eq(openmrsObjectSubClass), Matchers.<User> anyObject(),
-		    Matchers.<Date> anyObject(), anyString());
+		verify(voidHandler, times(1)).handle(eq(openmrsObjectSubClass), Matchers.anyObject(),
+		    Matchers.anyObject(), anyString());
 	}
 	
 	@Test
@@ -609,7 +609,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		Method m = WithAppropriatelyNamedMethod.class.getMethod("voidSomeOpenmrsDataButNotReally", SomeOpenmrsData.class);
 		SomeOpenmrsData openmrsObject = new SomeOpenmrsData();
 		requiredDataAdvice.before(m, new Object[] { openmrsObject }, new WithAppropriatelyNamedMethod());
-		verify(voidHandler, never()).handle(eq(openmrsObject), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(voidHandler, never()).handle(eq(openmrsObject), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 	}
 	
@@ -622,7 +622,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		ClassWithDisableHandlersAnnotation openmrsObject = new ClassWithDisableHandlersAnnotation();
 		
 		// create a couple locations and associate them with this openmrsObject
-		List<Person> persons = new ArrayList<Person>();
+		List<Person> persons = new ArrayList<>();
 		Person person = new Person();
 		persons.add(person);
 		openmrsObject.setPersons(persons);
@@ -630,7 +630,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		requiredDataAdvice.before(m, new Object[] { openmrsObject, "void reason" }, new WithAppropriatelyNamedMethod());
 		
 		// verify that the handle method was never called on this object
-		verify(voidHandler, never()).handle(eq(person), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(voidHandler, never()).handle(eq(person), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 		
 	}
@@ -644,7 +644,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		ClassWithDisableHandlersAnnotation openmrsObject = new ClassWithDisableHandlersAnnotation();
 		
 		// create a couple locations and associate them with this openmrsObject
-		List<Person> persons = new ArrayList<Person>();
+		List<Person> persons = new ArrayList<>();
 		Person person = new Person();
 		persons.add(person);
 		openmrsObject.setNotAnnotatedPersons(persons);
@@ -652,7 +652,7 @@ public class RequiredDataAdviceTest extends BaseContextMockTest {
 		requiredDataAdvice.before(m, new Object[] { openmrsObject, "void reason" }, new WithAppropriatelyNamedMethod());
 		
 		// verify that the handle method was called on this object
-		verify(voidHandler, times(1)).handle(eq(person), Matchers.<User> anyObject(), Matchers.<Date> anyObject(),
+		verify(voidHandler, times(1)).handle(eq(person), Matchers.anyObject(), Matchers.anyObject(),
 		    anyString());
 		
 	}

@@ -18,7 +18,7 @@ import org.openmrs.annotation.AllowDirectAccess;
 /**
  * Program
  */
-public class Program extends BaseOpenmrsMetadata {
+public class Program extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 3214567L;
 	
@@ -37,7 +37,7 @@ public class Program extends BaseOpenmrsMetadata {
 	private Concept outcomesConcept;
 	
 	@AllowDirectAccess
-	private Set<ProgramWorkflow> allWorkflows = new HashSet<ProgramWorkflow>();
+	private Set<ProgramWorkflow> allWorkflows = new HashSet<>();
 	
 	// ******************
 	// Constructors
@@ -153,7 +153,7 @@ public class Program extends BaseOpenmrsMetadata {
 	 * @return Returns a Set&lt;ProgramWorkflow&gt; of all non-retired workflows
 	 */
 	public Set<ProgramWorkflow> getWorkflows() {
-		Set<ProgramWorkflow> ret = new HashSet<ProgramWorkflow>();
+		Set<ProgramWorkflow> ret = new HashSet<>();
 		for (ProgramWorkflow workflow : getAllWorkflows()) {
 			if (!workflow.getRetired()) {
 				ret.add(workflow);
@@ -186,7 +186,7 @@ public class Program extends BaseOpenmrsMetadata {
 	 */
 	public Set<ProgramWorkflow> getAllWorkflows() {
 		if (allWorkflows == null) {
-			allWorkflows = new HashSet<ProgramWorkflow>();
+			allWorkflows = new HashSet<>();
 		}
 		return allWorkflows;
 	}

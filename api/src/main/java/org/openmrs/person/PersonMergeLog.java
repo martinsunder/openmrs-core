@@ -9,7 +9,7 @@
  */
 package org.openmrs.person;
 
-import org.openmrs.BaseOpenmrsData;
+import org.openmrs.BaseChangeableOpenmrsData;
 import org.openmrs.Person;
 import org.openmrs.api.PersonService;
 
@@ -25,7 +25,9 @@ import org.openmrs.api.PersonService;
  * @see PersonService#savePersonMergeLog(PersonMergeLog)
  * @since 1.9
  */
-public class PersonMergeLog extends BaseOpenmrsData {
+public class PersonMergeLog extends BaseChangeableOpenmrsData {
+	
+	private static final long serialVersionUID = 1L;
 	
 	/**
 	 * The unique identifier of the person merge log entity

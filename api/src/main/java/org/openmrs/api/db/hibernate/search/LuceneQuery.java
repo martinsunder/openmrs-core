@@ -29,6 +29,7 @@ import org.hibernate.search.FullTextQuery;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
 import org.hibernate.search.query.dsl.QueryBuilder;
+import org.openmrs.PatientIdentifier;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonName;
 import org.openmrs.collection.ListPart;
@@ -146,7 +147,7 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	 */
 	public LuceneQuery<T> include(String field, Object[] values) {
 		if (values != null && values.length != 0) {
-			Set<Term> terms = new HashSet<Term>();
+			Set<Term> terms = new HashSet<>();
 			for (Object value : values) {
 				terms.add(new Term(field, value.toString()));
 			}
@@ -238,7 +239,7 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 
 	protected MultiFieldQueryParser newMultipleFieldQueryParser(Collection<String> fields) {
 		Analyzer analyzer;
-		if (getType().isAssignableFrom(PersonName.class) || getType().isAssignableFrom(PersonAttribute.class)) {
+		if (getType().isAssignableFrom(PatientIdentifier.class) || getType().isAssignableFrom(PersonName.class) || getType().isAssignableFrom(PersonAttribute.class)) {
 			analyzer = getFullTextSession().getSearchFactory().getAnalyzer(LuceneAnalyzers.EXACT_ANALYZER);
 		} else {
 			analyzer = getFullTextSession().getSearchFactory().getAnalyzer(getType());
@@ -363,7 +364,7 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 		@SuppressWarnings("unchecked")
 		List<T> list = fullTextQuery.list();
 
-		return ListPart.newListPart(list, firstResult, maxResults, Long.valueOf(fullTextQuery.getResultSize()),
+		return ListPart.newListPart(list, firstResult, maxResults, (long) fullTextQuery.getResultSize(),
 		    !fullTextQuery.hasPartialResults());
 	}
 	
@@ -406,7 +407,7 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 		@SuppressWarnings("unchecked")
 		List<Object[]> list = fullTextQuery.list();
 		
-		return ListPart.newListPart(list, firstResult, maxResults, Long.valueOf(fullTextQuery.getResultSize()),
+		return ListPart.newListPart(list, firstResult, maxResults, (long) fullTextQuery.getResultSize(),
 		    !fullTextQuery.hasPartialResults());
 		
 	}

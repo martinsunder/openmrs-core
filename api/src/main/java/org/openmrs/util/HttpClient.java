@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HttpClient {
 	
-	private static Logger log = LoggerFactory.getLogger(HttpClient.class);
+	private static final Logger log = LoggerFactory.getLogger(HttpClient.class);
 	
 	private HttpUrl url;
 	
@@ -69,13 +70,13 @@ public class HttpClient {
 			connection.setRequestProperty("Content-Length", String.valueOf(data.length()));
 			connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 			
-			wr = new OutputStreamWriter(connection.getOutputStream());
+			wr = new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8);
 			wr.write(data.toString());
 			wr.flush();
 			wr.close();
 			
 			// Get the response
-			rd = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+			rd = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
 			String line;
 			while ((line = rd.readLine()) != null) {
 				response = String.format("%s%s%n", response, line);

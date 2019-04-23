@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.openmrs.module.Module;
 import org.openmrs.module.ModuleException;
@@ -43,7 +43,7 @@ public class ModuleFilterDefinition implements Serializable {
 	
 	public static final long serialVersionUID = 1;
 	
-	private static Logger log = LoggerFactory.getLogger(ModuleFilterDefinition.class);
+	private static final Logger log = LoggerFactory.getLogger(ModuleFilterDefinition.class);
 	
 	// Properties
 	private Module module;
@@ -52,7 +52,7 @@ public class ModuleFilterDefinition implements Serializable {
 	
 	private String filterClass;
 	
-	private Map<String, String> initParameters = new HashMap<String, String>();
+	private Map<String, String> initParameters = new HashMap<>();
 	
 	/**
 	 * Default constructor, requires a Module
@@ -152,9 +152,9 @@ public class ModuleFilterDefinition implements Serializable {
 	 * @return List of {@link ModuleFilterDefinition}s that have been defined for the passed
 	 *         {@link Module}
 	 */
-	public static List<ModuleFilterDefinition> retrieveFilterDefinitions(Module module) throws ModuleException {
+	public static List<ModuleFilterDefinition> retrieveFilterDefinitions(Module module)  {
 		
-		List<ModuleFilterDefinition> filters = new Vector<ModuleFilterDefinition>();
+		List<ModuleFilterDefinition> filters = new ArrayList<>();
 		
 		try {
 			Element rootNode = module.getConfig().getDocumentElement();

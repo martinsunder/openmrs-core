@@ -18,7 +18,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,6 +29,7 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -50,7 +50,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.Vector;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,7 +66,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
@@ -119,12 +118,15 @@ import org.w3c.dom.DocumentType;
  * Utility methods used in openmrs
  */
 public class OpenmrsUtil {
+
+	private OpenmrsUtil() {
+	}
 	
 	private static org.slf4j.Logger log = LoggerFactory.getLogger(OpenmrsUtil.class);
 	
-	private static Map<Locale, SimpleDateFormat> dateFormatCache = new HashMap<Locale, SimpleDateFormat>();
+	private static Map<Locale, SimpleDateFormat> dateFormatCache = new HashMap<>();
 	
-	private static Map<Locale, SimpleDateFormat> timeFormatCache = new HashMap<Locale, SimpleDateFormat>();
+	private static Map<Locale, SimpleDateFormat> timeFormatCache = new HashMap<>();
 	
 	/**
 	 * Compares origList to newList returning map of differences
@@ -133,13 +135,13 @@ public class OpenmrsUtil {
 	 * @param newList
 	 * @return [List toAdd, List toDelete] with respect to origList
 	 */
-	public static <E extends Object> Collection<Collection<E>> compareLists(Collection<E> origList, Collection<E> newList) {
+	public static <E> Collection<Collection<E>> compareLists(Collection<E> origList, Collection<E> newList) {
 		// TODO finish function
 		
-		Collection<Collection<E>> returnList = new Vector<Collection<E>>();
+		Collection<Collection<E>> returnList = new ArrayList<>();
 		
-		Collection<E> toAdd = new LinkedList<E>();
-		Collection<E> toDel = new LinkedList<E>();
+		Collection<E> toAdd = new LinkedList<>();
+		Collection<E> toDel = new LinkedList<>();
 		
 		// loop over the new list.
 		for (E currentNewListObj : newList) {
@@ -174,8 +176,8 @@ public class OpenmrsUtil {
 		boolean retVal = false;
 		
 		if (str != null && arr != null) {
-			for (int i = 0; i < arr.length; i++) {
-				if (str.equals(arr[i])) {
+			for (String anArr : arr) {
+				if (str.equals(anArr)) {
 					retVal = true;
 				}
 			}
@@ -220,9 +222,9 @@ public class OpenmrsUtil {
 	 */
 	public static String getFileAsString(File file) throws IOException {
 		StringBuilder fileData = new StringBuilder(1000);
-		BufferedReader reader = new BufferedReader(new FileReader(file));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
 		char[] buf = new char[1024];
-		int numRead = 0;
+		int numRead;
 		while ((numRead = reader.read(buf)) != -1) {
 			String readData = String.valueOf(buf, 0, numRead);
 			fileData.append(readData);
@@ -318,8 +320,13 @@ public class OpenmrsUtil {
 		if (!folder.isDirectory()) {
 			return false;
 		}
+
+		File[] files = folder.listFiles();
+		if (files == null) {
+			return false;
+		}
 		
-		for (File f : folder.listFiles()) {
+		for (File f : files) {
 			if (f.getName().equals(filename)) {
 				return true;
 			}
@@ -338,7 +345,7 @@ public class OpenmrsUtil {
 	 * @see Context#checkCoreDataset()
 	 */
 	public static Map<String, String> getCorePrivileges() {
-		Map<String, String> corePrivileges = new HashMap<String, String>();
+		Map<String, String> corePrivileges = new HashMap<>();
 		
 		// TODO getCorePrivileges() is called so so many times that getClassesWithAnnotation() better do some catching.
 		Set<Class<?>> classes = OpenmrsClassScanner.getInstance().getClassesWithAnnotation(HasAddOnStartupPrivileges.class);
@@ -381,7 +388,7 @@ public class OpenmrsUtil {
 	 * @return roles that are core to the system
 	 */
 	public static Map<String, String> getCoreRoles() {
-		Map<String, String> roles = new HashMap<String, String>();
+		Map<String, String> roles = new HashMap<>();
 		
 		Field[] flds = RoleConstants.class.getDeclaredFields();
 		for (Field fld : flds) {
@@ -582,7 +589,7 @@ public class OpenmrsUtil {
 	 * @return Map&lt;String, String&gt; of the parameters passed
 	 */
 	public static Map<String, String> parseParameterList(String paramList) {
-		Map<String, String> ret = new HashMap<String, String>();
+		Map<String, String> ret = new HashMap<>();
 		if (paramList != null && paramList.length() > 0) {
 			String[] args = paramList.split("\\|");
 			for (String s : args) {
@@ -617,10 +624,10 @@ public class OpenmrsUtil {
 			return d1.compareTo(d2);
 		}
 		if (d1 instanceof Timestamp) {
-			d1 = new Date(((Timestamp) d1).getTime());
+			d1 = new Date(d1.getTime());
 		}
 		if (d2 instanceof Timestamp) {
-			d2 = new Date(((Timestamp) d2).getTime());
+			d2 = new Date(d2.getTime());
 		}
 		return d1.compareTo(d2);
 	}
@@ -689,8 +696,10 @@ public class OpenmrsUtil {
 	 * @param c Collection to be joined
 	 * @param separator string to put between all elements
 	 * @return a String representing the toString() of all elements in c, separated by separator
+	 * @deprecated as of 2.2 use Java's {@link String#join} or Apache Commons StringUtils.join for iterables which do not extend {@link CharSequence}
 	 */
-	public static <E extends Object> String join(Collection<E> c, String separator) {
+	@Deprecated
+	public static <E> String join(Collection<E> c, String separator) {
 		if (c == null) {
 			return "";
 		}
@@ -706,7 +715,7 @@ public class OpenmrsUtil {
 	}
 	
 	public static Set<Concept> conceptSetHelper(String descriptor) {
-		Set<Concept> ret = new HashSet<Concept>();
+		Set<Concept> ret = new HashSet<>();
 		if (descriptor == null || descriptor.length() == 0) {
 			return ret;
 		}
@@ -754,7 +763,7 @@ public class OpenmrsUtil {
 		if (delimitedString != null) {
 			String[] tokens = delimitedString.split(delimiter);
 			for (String token : tokens) {
-				Integer conceptId = null;
+				Integer conceptId;
 				
 				try {
 					conceptId = Integer.valueOf(token);
@@ -763,7 +772,7 @@ public class OpenmrsUtil {
 					conceptId = null;
 				}
 				
-				Concept c = null;
+				Concept c;
 				
 				if (conceptId != null) {
 					c = Context.getConceptService().getConcept(conceptId);
@@ -773,7 +782,7 @@ public class OpenmrsUtil {
 				
 				if (c != null) {
 					if (ret == null) {
-						ret = new ArrayList<Concept>();
+						ret = new ArrayList<>();
 					}
 					ret.add(c);
 				}
@@ -793,7 +802,7 @@ public class OpenmrsUtil {
 				
 				if (c != null) {
 					if (ret == null) {
-						ret = new HashMap<String, Concept>();
+						ret = new HashMap<>();
 					}
 					ret.put(token, c);
 				}
@@ -805,7 +814,7 @@ public class OpenmrsUtil {
 	
 	// TODO: properly handle duplicates
 	public static List<Concept> conceptListHelper(String descriptor) {
-		List<Concept> ret = new ArrayList<Concept>();
+		List<Concept> ret = new ArrayList<>();
 		if (descriptor == null || descriptor.length() == 0) {
 			return ret;
 		}
@@ -901,6 +910,10 @@ public class OpenmrsUtil {
 		}
 		
 		File[] fileList = dir.listFiles();
+		if (fileList == null) {
+			return false;
+		}
+
 		for (File f : fileList) {
 			if (f.isDirectory()) {
 				deleteDirectory(f);
@@ -982,24 +995,16 @@ public class OpenmrsUtil {
 		if (file == null) {// non-local JAR file URL
 			return url.openStream();
 		}
-		JarFile jarFile = new JarFile(file);
-		try {
+		try (JarFile jarFile = new JarFile(file)) {
 			ZipEntry entry = jarFile.getEntry(path);
 			if (entry == null) {
 				throw new FileNotFoundException(url.toExternalForm());
 			}
-			InputStream in = jarFile.getInputStream(entry);
-			try {
+			try (InputStream in = jarFile.getInputStream(entry)) {
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				copyFile(in, out);
 				return new ByteArrayInputStream(out.toByteArray());
 			}
-			finally {
-				in.close();
-			}
-		}
-		finally {
-			jarFile.close();
 		}
 	}
 	
@@ -1201,15 +1206,13 @@ public class OpenmrsUtil {
 	}
 	
 	public static List<Integer> delimitedStringToIntegerList(String delimitedString, String delimiter) {
-		List<Integer> ret = new ArrayList<Integer>();
+		List<Integer> ret = new ArrayList<>();
 		String[] tokens = delimitedString.split(delimiter);
 		for (String token : tokens) {
 			token = token.trim();
-			if (token.length() == 0) {
-				continue;
-			} else {
+			if (token.length() != 0) {
 				ret.add(Integer.valueOf(token));
-			}
+			} 
 		}
 		return ret;
 	}
@@ -1305,20 +1308,12 @@ public class OpenmrsUtil {
 	 * Allows easy manipulation of a Map&lt;?, Set&gt;
 	 */
 	public static <K, V> void addToSetMap(Map<K, Set<V>> map, K key, V obj) {
-		Set<V> set = map.get(key);
-		if (set == null) {
-			set = new HashSet<V>();
-			map.put(key, set);
-		}
+		Set<V> set = map.computeIfAbsent(key, k -> new HashSet<>());
 		set.add(obj);
 	}
 	
 	public static <K, V> void addToListMap(Map<K, List<V>> map, K key, V obj) {
-		List<V> list = map.get(key);
-		if (list == null) {
-			list = new ArrayList<V>();
-			map.put(key, list);
-		}
+		List<V> list = map.computeIfAbsent(key, k -> new ArrayList<>());
 		list.add(obj);
 	}
 	
@@ -1651,7 +1646,7 @@ public class OpenmrsUtil {
 	 */
 	public static void storeProperties(Properties properties, OutputStream outStream, String comment) {
 		try {
-			Charset utf8 = Charset.forName("UTF-8");
+			Charset utf8 = StandardCharsets.UTF_8;
 			properties.store(new OutputStreamWriter(outStream, utf8), comment);
 		}
 		catch (FileNotFoundException fnfe) {
@@ -1679,7 +1674,7 @@ public class OpenmrsUtil {
 	public static void loadProperties(Properties props, InputStream inputStream) {
 		InputStreamReader reader = null;
 		try {
-			reader = new InputStreamReader(inputStream, "UTF-8");
+			reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
 			props.load(reader);
 		}
 		catch (FileNotFoundException fnfe) {
@@ -1975,7 +1970,7 @@ public class OpenmrsUtil {
 			return null;
 		}
 		
-		List<String> results = new ArrayList<String>();
+		List<String> results = new ArrayList<>();
 		final Pattern exclude = Pattern.compile("(org.springframework.|java.lang.reflect.Method.invoke|sun.reflect.)");
 		boolean found = false;
 		
@@ -2015,7 +2010,7 @@ public class OpenmrsUtil {
 		if (applicationName == null) {
 			applicationName = "openmrs";
 		}
-		String pathName = "";
+		String pathName;
 		pathName = getRuntimePropertiesFilePathName(applicationName);
 		FileInputStream propertyStream = null;
 		try {
@@ -2197,7 +2192,7 @@ public class OpenmrsUtil {
 	 * @return
 	 */
 	public static Set<String> getDeclaredFields(Class<?> clazz) {
-		return Arrays.asList(clazz.getDeclaredFields()).stream().map(f -> f.getName()).collect(Collectors.toSet());
+		return Arrays.stream(clazz.getDeclaredFields()).map(Field::getName).collect(Collectors.toSet());
 	}
 	
 }

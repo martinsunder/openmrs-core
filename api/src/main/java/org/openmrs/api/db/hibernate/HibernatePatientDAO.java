@@ -18,11 +18,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 import java.util.regex.Pattern;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.Query;
 import org.hibernate.SQLQuery;
@@ -59,7 +58,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HibernatePatientDAO implements PatientDAO {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(HibernatePatientDAO.class);
 	
 	/**
 	 * Hibernate session factory
@@ -164,6 +163,28 @@ public class HibernatePatientDAO implements PatientDAO {
 		}
 		
 	}
+	public List<Patient> getPatients(String query, List<PatientIdentifierType> identifierTypes,
+		boolean matchIdentifierExactly, Integer start, Integer length) throws DAOException{
+		
+		if (StringUtils.isBlank(query) || (length != null && length < 1) || identifierTypes == null || identifierTypes.isEmpty())  {
+			return Collections.emptyList();
+		}
+		
+		Integer tmpStart = start;
+		if (tmpStart == null || tmpStart < 0) {
+			tmpStart = 0;
+		}
+		
+		Integer tmpLength = length;
+		if (tmpLength == null) {
+			tmpLength = HibernatePersonDAO.getMaximumSearchResults();
+		}
+		
+		List<Patient> patients = findPatients(query, identifierTypes, matchIdentifierExactly, tmpStart, tmpLength);
+		
+		return patients;
+		
+	}
 	
 	/**
 	 * @see org.openmrs.api.db.PatientDAO#getPatients(String, boolean, Integer, Integer)
@@ -174,15 +195,18 @@ public class HibernatePatientDAO implements PatientDAO {
 		if (StringUtils.isBlank(query) || (length != null && length < 1)) {
 			return Collections.emptyList();
 		}
-		
-		if (start == null || start < 0) {
-			start = 0;
-		}
-		if (length == null) {
-			length = HibernatePersonDAO.getMaximumSearchResults();
+
+		Integer tmpStart = start;
+		if (tmpStart == null || tmpStart < 0) {
+			tmpStart = 0;
 		}
 
-		List<Patient> patients = findPatients(query, includeVoided, start, length);
+		Integer tmpLength = length;
+		if (tmpLength == null) {
+			tmpLength = HibernatePersonDAO.getMaximumSearchResults();
+		}
+
+		List<Patient> patients = findPatients(query, includeVoided, tmpStart, tmpLength);
 
 		return new ArrayList<>(patients);
 	}
@@ -286,7 +310,7 @@ public class HibernatePatientDAO implements PatientDAO {
 	}
 	
 	/**
-	 * @see org.openmrs.api.PatientService#deletePatient(org.openmrs.Patient)
+	 * @see org.openmrs.api.PatientDAO#deletePatient(org.openmrs.Patient)
 	 */
         @Override
 	public void deletePatient(Patient patient) throws DAOException {
@@ -388,8 +412,8 @@ public class HibernatePatientDAO implements PatientDAO {
 	@SuppressWarnings("unchecked")
         @Override
 	public List<Patient> getDuplicatePatientsByAttributes(List<String> attributes) {
-		List<Patient> patients = new Vector<Patient>();
-		List<Integer> patientIds = new Vector<Integer>();
+		List<Patient> patients = new ArrayList<>();
+		List<Integer> patientIds = new ArrayList<>();
 
 		if (!attributes.isEmpty()) {
 
@@ -413,7 +437,7 @@ public class HibernatePatientDAO implements PatientDAO {
 	}
 
 	private String getDuplicatePatientsSQLString(List<String> attributes) {
-		String outerSelect = "select distinct t1.patient_id from patient t1 ";
+		StringBuilder outerSelect = new StringBuilder("select distinct t1.patient_id from patient t1 ");
 		final String t5 = " = t5.";
 		
 		Set<String> patientFieldNames = OpenmrsUtil.getDeclaredFields(Patient.class);
@@ -425,7 +449,7 @@ public class HibernatePatientDAO implements PatientDAO {
 
 
 		List<String> innerFields = new ArrayList<>();
-		String innerSelect = " from patient p1 ";
+		StringBuilder innerSelect = new StringBuilder(" from patient p1 ");
 
 		for (String attribute : attributes) {
 			if (attribute != null) {
@@ -441,9 +465,9 @@ public class HibernatePatientDAO implements PatientDAO {
 				whereConditions.add(" t1." + attribute + t5 + attribute);
 				innerFields.add("p1." + attribute);
 			} else if (personFieldNames.contains(attribute)) {
-				if (!outerSelect.contains("person")) {
-					outerSelect += "inner join person t2 on t1.patient_id = t2.person_id ";
-					innerSelect += "inner join person person1 on p1.patient_id = person1.person_id ";
+				if (!outerSelect.toString().contains("person")) {
+					outerSelect.append("inner join person t2 on t1.patient_id = t2.person_id ");
+					innerSelect.append("inner join person person1 on p1.patient_id = person1.person_id ");
 				}
 
 				AbstractEntityPersister aep = (AbstractEntityPersister) sessionFactory.getClassMetadata(Person.class);
@@ -457,9 +481,9 @@ public class HibernatePatientDAO implements PatientDAO {
 				whereConditions.add(" t2." + attribute + t5 + attribute);
 				innerFields.add("person1." + attribute);
 			} else if (personNameFieldNames.contains(attribute)) {
-				if (!outerSelect.contains("person_name")) {
-					outerSelect += "inner join person_name t3 on t2.person_id = t3.person_id ";
-					innerSelect += "inner join person_name pn1 on person1.person_id = pn1.person_id ";
+				if (!outerSelect.toString().contains("person_name")) {
+					outerSelect.append("inner join person_name t3 on t2.person_id = t3.person_id ");
+					innerSelect.append("inner join person_name pn1 on person1.person_id = pn1.person_id ");
 				}
 
 				//Since we are firing a native query get the actual table column name from the field name of the entity
@@ -476,9 +500,9 @@ public class HibernatePatientDAO implements PatientDAO {
 				whereConditions.add(" t3." + attribute + t5 + attribute);
 				innerFields.add("pn1." + attribute);
 			} else if (identifierFieldNames.contains(attribute)) {
-				if (!outerSelect.contains("patient_identifier")) {
-					outerSelect += "inner join patient_identifier t4 on t1.patient_id = t4.patient_id ";
-					innerSelect += "inner join patient_identifier pi1 on p1.patient_id = pi1.patient_id ";
+				if (!outerSelect.toString().contains("patient_identifier")) {
+					outerSelect.append("inner join patient_identifier t4 on t1.patient_id = t4.patient_id ");
+					innerSelect.append("inner join patient_identifier pi1 on p1.patient_id = pi1.patient_id ");
 				}
 
 				AbstractEntityPersister aep = (AbstractEntityPersister) sessionFactory
@@ -539,7 +563,7 @@ public class HibernatePatientDAO implements PatientDAO {
 				return patPos1.compareTo(patPos2);
 			}
 		}
-		Collections.sort(patients, new PatientIdComparator(patientIdOrder));
+		patients.sort(new PatientIdComparator(patientIdOrder));
 	}
 	
 	/**
@@ -547,7 +571,7 @@ public class HibernatePatientDAO implements PatientDAO {
 	 */
         @Override
 	public Patient getPatientByUuid(String uuid) {
-		Patient p = null;
+		Patient p;
 		
 		p = (Patient) sessionFactory.getCurrentSession().createQuery("from Patient p where p.uuid = :uuid").setString(
 		    "uuid", uuid).uniqueResult();
@@ -663,31 +687,74 @@ public class HibernatePatientDAO implements PatientDAO {
 		if (StringUtils.isBlank(query)) {
 			return 0L;
 		}
+		String tmpQuery = LuceneQuery.escapeQuery(query);
 
-		query = LuceneQuery.escapeQuery(query);
-
-		LuceneQuery<PatientIdentifier> identifierQuery = getPatientIdentifierLuceneQuery(query, includeVoided);
+		LuceneQuery<PatientIdentifier> identifierQuery = getPatientIdentifierLuceneQuery(tmpQuery, includeVoided, false);
 
 		PersonLuceneQuery personLuceneQuery = new PersonLuceneQuery(sessionFactory);
 
-		LuceneQuery<PersonName> nameQuery = personLuceneQuery.getPatientNameQuery(query, includeVoided, identifierQuery);
-		LuceneQuery<PersonAttribute> attributeQuery = personLuceneQuery.getPatientAttributeQuery(query, includeVoided, nameQuery);
-		long size = identifierQuery.resultSize() + nameQuery.resultSize() + attributeQuery.resultSize();
+		LuceneQuery<PersonName> nameQuery = personLuceneQuery.getPatientNameQuery(tmpQuery, includeVoided, identifierQuery);
+		LuceneQuery<PersonAttribute> attributeQuery = personLuceneQuery.getPatientAttributeQuery(tmpQuery, includeVoided, nameQuery);
 
-		return size;
+		return identifierQuery.resultSize() + nameQuery.resultSize() + attributeQuery.resultSize();
 	}
 
     private List<Patient> findPatients(String query, boolean includeVoided) {
 		return findPatients(query, includeVoided, null, null);
 	}
-
-	public List<Patient> findPatients(String query, boolean includeVoided, Integer start, Integer length){
-		if (start == null) {
-			start = 0;
+	
+	private List<Patient> findPatients(String query, List<PatientIdentifierType> identifierTypes, boolean matchExactly, Integer start, Integer length) {
+		String tmpQuery = query;
+		Integer tmpStart = start;
+		
+		if (tmpStart == null) {
+			tmpStart = 0;
 		}
 		Integer maxLength = HibernatePersonDAO.getMaximumSearchResults();
-		if (length == null || length > maxLength) {
-			length = maxLength;
+		Integer tmpLength = length;
+		if (tmpLength == null || tmpLength > maxLength) {
+			tmpLength = maxLength;
+		}
+		tmpQuery = LuceneQuery.escapeQuery(tmpQuery);
+		
+		List<Patient> patients = new LinkedList<>();
+		
+		String minChars = Context.getAdministrationService().getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_MIN_SEARCH_CHARACTERS);
+		
+		if (minChars == null || !StringUtils.isNumeric(minChars)) {
+			minChars = "" + OpenmrsConstants.GLOBAL_PROPERTY_DEFAULT_MIN_SEARCH_CHARACTERS;
+		}
+		if (tmpQuery.length() < Integer.valueOf(minChars)) {
+			return patients;
+		}
+		LuceneQuery<PatientIdentifier> identifierQuery = getPatientIdentifierLuceneQuery(tmpQuery, identifierTypes, matchExactly);
+		
+		long identifiersSize = identifierQuery.resultSize();
+		if (identifiersSize > tmpStart) {
+			ListPart<Object[]> patientIdentifiers = identifierQuery.listPartProjection(tmpStart, tmpLength, "patient.personId");
+			patientIdentifiers.getList().forEach(patientIdentifier -> patients.add(getPatient((Integer) patientIdentifier[0])));
+			
+			tmpLength -= patientIdentifiers.getList().size();
+			tmpStart = 0;
+		} else {
+			tmpStart -= (int) identifiersSize;
+		}
+		
+		if (tmpLength == 0) {
+			return patients;
+		}
+		return patients;
+	}
+	
+	public List<Patient> findPatients(String query, boolean includeVoided, Integer start, Integer length){
+		Integer tmpStart = start;
+		if (tmpStart == null) {
+			tmpStart = 0;
+		}
+		Integer maxLength = HibernatePersonDAO.getMaximumSearchResults();
+		Integer tmpLength = length;
+		if (tmpLength == null || tmpLength > maxLength) {
+			tmpLength = maxLength;
 		}
 		query = LuceneQuery.escapeQuery(query);
 
@@ -702,20 +769,20 @@ public class HibernatePatientDAO implements PatientDAO {
 			return patients;
 		}
 
-		LuceneQuery<PatientIdentifier> identifierQuery = getPatientIdentifierLuceneQuery(query, includeVoided);
+		LuceneQuery<PatientIdentifier> identifierQuery = getPatientIdentifierLuceneQuery(query, includeVoided, false);
 
 		long identifiersSize = identifierQuery.resultSize();
-		if (identifiersSize > start) {
-			ListPart<Object[]> patientIdentifiers = identifierQuery.listPartProjection(start, length, "patient.personId");
+		if (identifiersSize > tmpStart) {
+			ListPart<Object[]> patientIdentifiers = identifierQuery.listPartProjection(tmpStart, tmpLength, "patient.personId");
 			patientIdentifiers.getList().forEach(patientIdentifier -> patients.add(getPatient((Integer) patientIdentifier[0])));
 
-			length -= patientIdentifiers.getList().size();
-			start = 0;
+			tmpLength -= patientIdentifiers.getList().size();
+			tmpStart = 0;
 		} else {
-			start -= (int) identifiersSize;
+			tmpStart -= (int) identifiersSize;
 		}
 
-		if (length == 0) {
+		if (tmpLength == 0) {
 			return patients;
 		}
 
@@ -723,43 +790,70 @@ public class HibernatePatientDAO implements PatientDAO {
 
 		LuceneQuery<PersonName> nameQuery = personLuceneQuery.getPatientNameQuery(query, includeVoided, identifierQuery);
 		long namesSize = nameQuery.resultSize();
-		if (namesSize > start) {
-			ListPart<Object[]> personNames = nameQuery.listPartProjection(start, length, "person.personId");
+		if (namesSize > tmpStart) {
+			ListPart<Object[]> personNames = nameQuery.listPartProjection(tmpStart, tmpLength, "person.personId");
 			personNames.getList().forEach(personName -> patients.add(getPatient((Integer) personName[0])));
 
-			length -= personNames.getList().size();
-			start = 0;
+			tmpLength -= personNames.getList().size();
+			tmpStart = 0;
 		} else {
-			start -= (int) namesSize;
+			tmpStart -= (int) namesSize;
 		}
 
-		if (length == 0) {
+		if (tmpLength == 0) {
 			return patients;
 		}
 
 		LuceneQuery<PersonAttribute> attributeQuery = personLuceneQuery.getPatientAttributeQuery(query, includeVoided, nameQuery);
 		long attributesSize = attributeQuery.resultSize();
-		if (attributesSize > start) {
-			ListPart<Object[]> personAttributes = attributeQuery.listPartProjection(start, length, "person.personId");
+		if (attributesSize > tmpStart) {
+			ListPart<Object[]> personAttributes = attributeQuery.listPartProjection(tmpStart, tmpLength, "person.personId");
 			personAttributes.getList().forEach(personAttribute -> patients.add(getPatient((Integer) personAttribute[0])));
 		}
 
 		return patients;
 	}
-
-    private LuceneQuery<PatientIdentifier> getPatientIdentifierLuceneQuery(String query, boolean includeVoided) {
-		query = removeIdentifierPadding(query);
+	private LuceneQuery<PatientIdentifier> getPatientIdentifierLuceneQuery(String query, List<PatientIdentifierType> identifierTypes, boolean matchExactly) {
+		LuceneQuery<PatientIdentifier> patientIdentifierLuceneQuery = getPatientIdentifierLuceneQuery(query, matchExactly);
+		for(PatientIdentifierType identifierType : identifierTypes) {
+			patientIdentifierLuceneQuery.include("identifierType.patientIdentifierTypeId", identifierType.getId());
+		}
+		patientIdentifierLuceneQuery.include("patient.isPatient", true);
+		patientIdentifierLuceneQuery.skipSame("patient.personId");
+		
+		return patientIdentifierLuceneQuery;
+	}
+	
+	private LuceneQuery<PatientIdentifier> getPatientIdentifierLuceneQuery(String paramQuery, boolean matchExactly) {
+		String query = removeIdentifierPadding(paramQuery);
 		List<String> tokens = tokenizeIdentifierQuery(query);
-
-		LuceneQuery<PatientIdentifier> luceneQuery = LuceneQuery
-                .newQuery(PatientIdentifier.class, sessionFactory.getCurrentSession(), "identifierPhrase:(" + StringUtils.join(tokens, " OR ") + ")");
-        if(!includeVoided){
+		query = StringUtils.join(tokens, " OR ");
+		List<String> fields = new ArrayList<>();
+		fields.add("identifierPhrase");
+		fields.add("identifierType");
+		String matchMode = Context.getAdministrationService()
+			.getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_IDENTIFIER_SEARCH_MATCH_MODE);
+		if (matchExactly) {
+			fields.add("identifierExact");
+		}
+		else if (OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_START.equals(matchMode)) {
+			fields.add("identifierStart");
+		} 
+		else  {
+			fields.add("identifierAnywhere");
+		}
+		return LuceneQuery.newQuery(PatientIdentifier.class, sessionFactory.getCurrentSession(), query, fields);
+	
+	}		
+		
+	private LuceneQuery<PatientIdentifier> getPatientIdentifierLuceneQuery(String query, boolean includeVoided, boolean matchExactly) {
+	    LuceneQuery<PatientIdentifier> luceneQuery = getPatientIdentifierLuceneQuery(query, matchExactly);
+		if(!includeVoided){
         	luceneQuery.include("voided", false);
 			luceneQuery.include("patient.voided", false);
         }
 
         luceneQuery.include("patient.isPatient", true);
-
 		luceneQuery.skipSame("patient.personId");
 
         return luceneQuery;
@@ -785,7 +879,7 @@ public class HibernatePatientDAO implements PatientDAO {
 	 * @see PatientSearchCriteria
 	 */
 	private List<String> tokenizeIdentifierQuery(String query) {
-		List<String> searchPatterns = new ArrayList<String>();
+		List<String> searchPatterns = new ArrayList<>();
 
 		String patternSearch = Context.getAdministrationService().getGlobalProperty(
 				OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_IDENTIFIER_SEARCH_PATTERN, "");

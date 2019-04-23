@@ -26,7 +26,7 @@ import org.springframework.validation.ValidationUtils;
 @Handler(supports = { Patient.class }, order = 25)
 public class PatientValidator extends PersonValidator {
 	
-	private static Logger log = LoggerFactory.getLogger(PersonNameValidator.class);
+	private static final Logger log = LoggerFactory.getLogger(PersonNameValidator.class);
 	
 	@Autowired
 	private PatientIdentifierValidator patientIdentifierValidator;
@@ -39,9 +39,7 @@ public class PatientValidator extends PersonValidator {
 	 */
 	@Override
 	public boolean supports(Class<?> c) {
-		if (log.isDebugEnabled()) {
-			log.debug(this.getClass().getName() + ".supports: " + c.getName());
-		}
+		log.debug("{}.supports: {}", this.getClass().getName(), c.getName());
 		return Patient.class.isAssignableFrom(c);
 	}
 	
@@ -66,9 +64,7 @@ public class PatientValidator extends PersonValidator {
 	 */
 	@Override
 	public void validate(Object obj, Errors errors) {
-		if (log.isDebugEnabled()) {
-			log.debug(this.getClass().getName() + ".validate...");
-		}
+		log.debug("{}.validate...", this.getClass().getName());
 		
 		if (obj == null) {
 			return;

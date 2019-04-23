@@ -97,6 +97,8 @@
         <property name="encounterService"><ref bean="encounterService"/></property>
         <property name="locationService"><ref bean="locationService"/></property>
         <property name="orderService"><ref bean="orderService"/></property>
+		<property name="conditionService"><ref bean="conditionService"/></property>
+		<property name="diagnosisService"><ref bean="diagnosisService"/></property>
 		<property name="orderSetService"><ref bean="orderSetService"/></property>
         <property name="formService"><ref bean="formService"/></property>
         <property name="administrationService"><ref bean="adminService"/></property>
@@ -113,15 +115,16 @@
         <property name="providerService"><ref bean="providerService"/></property>
 	</bean>	
 	
-	<bean id="context" class="org.openmrs.api.context.Context">
-        <property name="serviceContext"><ref bean="serviceContext"/></property>
-        <property name="contextDAO"><ref bean="contextDAO"/></property>
+  <bean id="context" class="org.openmrs.api.context.Context" init-method="setAuthenticationScheme">
+    <property name="serviceContext"><ref bean="serviceContext"/></property>
+    <property name="contextDAO"><ref bean="contextDAO"/></property>
 	</bean>
 
 	<!--  **************************  DATA ACCESS OBJECTS  *************************  -->		
 
 	<bean id="contextDAO" class="org.openmrs.api.db.hibernate.HibernateContextDAO">
-		<property name="sessionFactory"><ref bean="sessionFactory"/></property>	
+		<property name="sessionFactory"><ref bean="sessionFactory"/></property>
+    <property name="userDAO"><ref bean="userDAO"/></property>
 	</bean>
 	
 	<bean id="patientDAO" class="org.openmrs.api.db.hibernate.HibernatePatientDAO">
@@ -190,6 +193,12 @@
 	<bean id="providerDAO" class="org.openmrs.api.db.hibernate.HibernateProviderDAO">
         <property name="sessionFactory"><ref bean="sessionFactory"/></property>
     </bean>
+	<bean id="conditionDAO" class="org.openmrs.api.db.hibernate.HibernateConditionDAO">
+        <property name="sessionFactory"><ref bean="sessionFactory"/></property>
+    </bean>
+	<bean id="diagnosisDAO" class="org.openmrs.api.db.hibernate.HibernateDiagnosisDAO">
+		<property name="sessionFactory"><ref bean="sessionFactory"/></property>
+	</bean>
 	
 
 	<!--  **************************  SCHEDULER SERVICE  *************************  -->
@@ -252,6 +261,12 @@
 	</bean>
 	<bean id="orderServiceTarget" class="org.openmrs.api.impl.OrderServiceImpl">
 		<property name="orderDAO"><ref bean="orderDAO"/></property>
+	</bean>
+	<bean id="conditionServiceTarget" class="org.openmrs.api.impl.ConditionServiceImpl">
+		<property name="conditionDAO"><ref bean="conditionDAO"/></property>
+	</bean>
+	<bean id="diagnosisServiceTarget" class="org.openmrs.api.impl.DiagnosisServiceImpl">
+		<property name="diagnosisDAO"><ref bean="diagnosisDAO"/></property>
 	</bean>
 	<bean id="orderSetServiceTarget" class="org.openmrs.api.impl.OrderSetServiceImpl">
 		<property name="orderSetDAO"><ref bean="orderSetDAO"/></property>
@@ -401,6 +416,22 @@
 		</property>
 		<property name="transactionAttributeSource"><ref local="transactionAttributeSource" /></property>
 	</bean>
+	<bean id="conditionService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+		<property name="target"><ref local="conditionServiceTarget"/></property>
+		<property name="preInterceptors">
+			<ref local="serviceInterceptors" />
+		</property>
+		<property name="transactionAttributeSource"><ref local="transactionAttributeSource" /></property>
+	</bean>
+	<bean id="diagnosisService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+		<property name="target"><ref local="diagnosisServiceTarget"/></property>
+		<property name="preInterceptors">
+			<ref local="serviceInterceptors" />
+		</property>
+		<property name="transactionAttributeSource"><ref local="transactionAttributeSource" /></property>
+	</bean>
 	<bean id="orderSetService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
 		<property name="transactionManager"><ref local="transactionManager"/></property>
 		<property name="target"><ref local="orderSetServiceTarget"/></property>
@@ -518,20 +549,7 @@
     </bean>
 	
 	
-	<!--
-		Scheduler service bean pool.
-	--><!--
-	<bean id="schedulerServicePool" class="org.springframework.aop.target.CommonsPoolTargetSource">
-		<property name="targetBeanName"><value>schedulerServiceTarget</value></property>
-		<property name="maxSize"><value>10</value></property>
-	</bean>
-	--><!-- 
-		Scheduler service 
-	--><!--
-	<bean id="schedulerService" class="org.springframework.aop.framework.ProxyFactoryBean">
-		<property name="targetSource"><ref local="schedulerServicePool"/></property>
-	</bean>
-	-->
+	
 
 	<!--  **************************  SERVICE INTERCEPTORS  *************************  -->
 	<!-- AOP before advice that authorizes users according to annotations -->

@@ -24,9 +24,9 @@ import org.openmrs.customdatatype.Customizable;
  * @param <A> the type of attribute held
  * @since 1.9
  */
-public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpenmrsData implements Customizable<A> {
+public abstract class BaseCustomizableData<A extends Attribute> extends BaseChangeableOpenmrsData implements Customizable<A> {
 	
-	private Set<A> attributes = new LinkedHashSet<A>();
+	private Set<A> attributes = new LinkedHashSet<>();
 	
 	/**
 	 * @see org.openmrs.customdatatype.Customizable#getAttributes()
@@ -48,7 +48,7 @@ public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpen
 	 */
 	@Override
 	public Collection<A> getActiveAttributes() {
-		List<A> ret = new ArrayList<A>();
+		List<A> ret = new ArrayList<>();
 		if (getAttributes() != null) {
 			for (A attr : getAttributes()) {
 				if (!attr.getVoided()) {
@@ -64,7 +64,7 @@ public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpen
 	 */
 	@Override
 	public List<A> getActiveAttributes(CustomValueDescriptor ofType) {
-		List<A> ret = new ArrayList<A>();
+		List<A> ret = new ArrayList<>();
 		if (getAttributes() != null) {
 			for (A attr : getAttributes()) {
 				if (attr.getAttributeType().equals(ofType) && !attr.getVoided()) {
@@ -81,7 +81,7 @@ public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpen
 	@Override
 	public void addAttribute(A attribute) {
 		if (getAttributes() == null) {
-			setAttributes(new LinkedHashSet<A>());
+			setAttributes(new LinkedHashSet<>());
 		}
 		getAttributes().add(attribute);
 		attribute.setOwner(this);
@@ -102,9 +102,7 @@ public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpen
 		
 		if (getActiveAttributes(attribute.getAttributeType()).size() == 1) {
 			A existing = getActiveAttributes(attribute.getAttributeType()).get(0);
-			if (existing.getValue().equals(attribute.getValue())) {
-				// do nothing, since the value is already as-specified
-			} else {
+			if (!existing.getValue().equals(attribute.getValue())) {
 				if (existing.getId() != null) {
 					existing.setVoided(true);
 				} else {
@@ -113,20 +111,20 @@ public abstract class BaseCustomizableData<A extends Attribute> extends BaseOpen
 				getAttributes().add(attribute);
 				attribute.setOwner(this);
 			}
-			
-		} else {
-			for (A existing : getActiveAttributes(attribute.getAttributeType())) {
-				if (existing.getAttributeType().equals(attribute.getAttributeType())) {
-					if (existing.getId() != null) {
-						existing.setVoided(true);
-					} else {
-						getAttributes().remove(existing);
-					}
+			return;
+		}
+		
+		for (A existing : getActiveAttributes(attribute.getAttributeType())) {
+			if (existing.getAttributeType().equals(attribute.getAttributeType())) {
+				if (existing.getId() != null) {
+					existing.setVoided(true);
+				} else {
+					getAttributes().remove(existing);
 				}
 			}
-			getAttributes().add(attribute);
-			attribute.setOwner(this);
 		}
+		getAttributes().add(attribute);
+		attribute.setOwner(this);
 	}
 	
 }

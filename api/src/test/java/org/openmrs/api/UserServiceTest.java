@@ -27,10 +27,10 @@ import java.util.Set;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.Before;
 import org.junit.rules.ExpectedException;
 import org.openmrs.Patient;
 import org.openmrs.Person;
@@ -40,13 +40,18 @@ import org.openmrs.Role;
 import org.openmrs.User;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.db.DAOException;
+import org.openmrs.api.db.LoginCredential;
+import org.openmrs.api.db.UserDAO;
 import org.openmrs.messagesource.MessageSourceService;
+import org.openmrs.notification.MessageException;
 import org.openmrs.patient.impl.LuhnIdentifierValidator;
 import org.openmrs.test.BaseContextSensitiveTest;
 import org.openmrs.test.SkipBaseSetup;
+import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.PrivilegeConstants;
 import org.openmrs.util.RoleConstants;
 import org.openmrs.util.Security;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * TODO add more tests to cover the methods in <code>UserService</code>
@@ -66,7 +71,10 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 	private UserService userService;
 
 	private MessageSourceService messages;
-
+	
+	@Autowired
+	private UserDAO dao;
+	
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
@@ -162,7 +170,7 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 		Context.clearSession();
 		
 		List<User> allUsers = userService.getAllUsers();
-		assertEquals(11, allUsers.size());
+		assertEquals(10, allUsers.size());
 		
 		// there should still only be the one patient we created in the xml file
 		List<Patient> allPatientsSet = Context.getPatientService().getAllPatients();
@@ -575,7 +583,7 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void getAllUsers_shouldFetchAllUsersInTheSystem() {
 		List<User> users = userService.getAllUsers();
-		Assert.assertEquals(4, users.size());
+		Assert.assertEquals(3, users.size());
 	}
 	
 	/**
@@ -585,7 +593,7 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 	public void getAllUsers_shouldNotContainsAnyDuplicateUsers() {
 		executeDataSet(XML_FILENAME);
 		List<User> users = userService.getAllUsers();
-		Assert.assertEquals(12, users.size());
+		assertEquals(11, users.size());
 		// TODO Need to test with duplicate data in the dataset (not sure if that's possible)
 		
 	}
@@ -733,8 +741,8 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 	 */
 	@Test
 	public void getUsers_shouldFetchAllUsersIfNameSearchIsEmptyOrNull() {
-		Assert.assertEquals(4, userService.getUsers("", null, true).size());
-		Assert.assertEquals(4, userService.getUsers(null, null, true).size());
+		assertEquals(3, userService.getUsers("", null, true).size());
+		assertEquals(3, userService.getUsers(null, null, true).size());
 	}
 	
 	/**
@@ -1350,5 +1358,151 @@ public class UserServiceTest extends BaseContextSensitiveTest {
 		expectedException.expectMessage(messages.getMessage("secret.answer.not.correct"));
 		
 		userService.changePasswordUsingSecretAnswer("wrong answer", "userServiceTest2");
+	}
+	
+	/**
+	 * @see UserService#getUserByUsernameOrEmail(String)
+	 */
+	@Test
+	public void getUserByUsernameOrEmail_shouldGetUserByUsingEmail() {
+		executeDataSet(XML_FILENAME);
+		User user = userService.getUserByUsernameOrEmail("hank.williams@gmail.com");
+		assertNotNull("User with email hank.williams@gmail not found in database", user);
+	}
+	
+	@Test
+	public void getUserByUsernameOrEmail_shouldNotGetUserIfEmailIsEmpty() {
+		expectedException.expect(APIException.class);
+		expectedException.expectMessage(messages.getMessage("error.usernameOrEmail.notNullOrBlank"));
+		userService.getUserByUsernameOrEmail("");
+	}
+	
+	@Test
+	public void getUserByUsernameOrEmail_shouldFailIfEmailIsWhiteSpace() {
+		expectedException.expect(APIException.class);
+		expectedException.expectMessage(messages.getMessage("error.usernameOrEmail.notNullOrBlank"));
+		userService.getUserByUsernameOrEmail("  ");
+	}
+	
+	@Test
+	public void getUserByUsernameOrEmail_shouldFailIfEmailIsNull() {
+		expectedException.expect(APIException.class);
+		expectedException.expectMessage(messages.getMessage("error.usernameOrEmail.notNullOrBlank"));
+		userService.getUserByUsernameOrEmail(null);
+	}
+	
+	
+	@Test
+	public void setUserActivationKey_shouldCreateUserActivationKey() throws Exception {
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		Context.getAdministrationService().setGlobalProperty(OpenmrsConstants.GP_HOST_URL,
+		    "http://localhost:8080/openmrs/admin/users/changePassword.form/{activationKey}");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		assertNull(dao.getLoginCredential(createdUser).getActivationKey());
+		expectedException.expect(MessageException.class);
+		assertEquals(createdUser, userService.setUserActivationKey(createdUser));
+		assertNotNull(dao.getLoginCredential(createdUser).getActivationKey());
+	}
+	
+	@Test 
+	public void getUserByActivationKey_shouldGetUserByActivationKey(){
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		String key="h4ph0fpNzQCIPSw8plJI";
+		int validTime = 10*60*1000; //equivalent to 10 minutes for token to be valid
+		Long tokenTime = System.currentTimeMillis() + validTime;
+		LoginCredential credentials = dao.getLoginCredential(createdUser);
+		credentials.setActivationKey("b071c88d6d877922e35af2e6a90dd57d37ac61143a03bb986c5f353566f3972a86ce9b2604c31a22dfa467922dcfd54fa7d18b0a7c7648d94ca3d97a88ea2fd0:"+tokenTime);			
+		dao.updateLoginCredential(credentials);
+		assertEquals(createdUser, userService.getUserByActivationKey(key)); 	
+	}
+	
+	@Test
+	public void getUserByActivationKey_shouldReturnNullIfTokenTimeExpired(){
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		String key="h4ph0fpNzQCIPSw8plJI";
+		int validTime = 10*60*1000; //equivalent to 10 minutes for token to be valid
+		Long tokenTime = System.currentTimeMillis() - validTime;
+		LoginCredential credentials = dao.getLoginCredential(createdUser);
+		credentials.setActivationKey("b071c88d6d877922e35af2e6a90dd57d37ac61143a03bb986c5f353566f3972a86ce9b2604c31a22dfa467922dcfd54fa7d18b0a7c7648d94ca3d97a88ea2fd0:"+tokenTime);			
+		dao.updateLoginCredential(credentials); 
+		assertNull(userService.getUserByActivationKey(key)); 
+	}
+	
+	@Test
+	public void changePasswordUsingActivationKey_shouldUpdatePasswordIfActivationKeyIsCorrect() {
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		String key = "h4ph0fpNzQCIPSw8plJI";
+		int validTime = 10 * 60 * 1000; //equivalent to 10 minutes for token to be valid
+		Long tokenTime = System.currentTimeMillis() + validTime;
+		LoginCredential credentials = dao.getLoginCredential(createdUser);
+		credentials.setActivationKey(
+		    "b071c88d6d877922e35af2e6a90dd57d37ac61143a03bb986c5f353566f3972a86ce9b2604c31a22dfa467922dcfd54fa7d18b0a7c7648d94ca3d97a88ea2fd0:"
+		            + tokenTime);
+		dao.updateLoginCredential(credentials);
+		
+		final String PASSWORD = "Admin123";
+		Context.authenticate(createdUser.getUsername(), "Openmr5xy");
+		userService.changePasswordUsingActivationKey(key, PASSWORD);
+		Context.authenticate(createdUser.getUsername(), PASSWORD);
+		
+	}
+	
+	@Test
+	public void changePasswordUsingActivationKey_shouldNotUpdatePasswordIfActivationKeyIsIncorrect() {
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		String key = "wrongactivationkeyin";
+		Context.authenticate(createdUser.getUsername(), "Openmr5xy");
+		expectedException.expect(InvalidActivationKeyException.class);
+		expectedException.expectMessage(messages.getMessage("activation.key.not.correct"));
+		
+		userService.changePasswordUsingActivationKey(key, "Pa55w0rd");
+	}
+	
+	@Test
+	public void changePasswordUsingActivationKey_shouldNotUpdatePasswordIfActivationKeyExpired() {
+		User u = new User();
+		u.setPerson(new Person());
+		u.addName(new PersonName("Benjamin", "A", "Wolfe"));
+		u.setUsername("bwolfe");
+		u.getPerson().setGender("M");
+		User createdUser = userService.createUser(u, "Openmr5xy");
+		String key = "h4ph0fpNzQCIPSw8plJI";
+		int validTime = 10 * 60 * 1000; //equivalent to 10 minutes for token to be valid
+		Long tokenTime = System.currentTimeMillis() - validTime;
+		LoginCredential credentials = dao.getLoginCredential(createdUser);
+		credentials.setActivationKey(
+		    "b071c88d6d877922e35af2e6a90dd57d37ac61143a03bb986c5f353566f3972a86ce9b2604c31a22dfa467922dcfd54fa7d18b0a7c7648d94ca3d97a88ea2fd0:"
+		            + tokenTime);
+		dao.updateLoginCredential(credentials);
+		Context.authenticate(createdUser.getUsername(), "Openmr5xy");
+		
+		expectedException.expect(InvalidActivationKeyException.class);
+		expectedException.expectMessage(messages.getMessage("activation.key.not.correct"));
+		
+		userService.changePasswordUsingActivationKey(key, "Pa55w0rd");
 	}
 }

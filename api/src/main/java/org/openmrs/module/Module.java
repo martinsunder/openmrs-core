@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Vector;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.openmrs.GlobalProperty;
@@ -34,7 +33,7 @@ import org.w3c.dom.Document;
  */
 public final class Module {
 	
-	private Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(Module.class);
 	
 	private String name;
 	
@@ -68,21 +67,21 @@ public final class Module {
 	
 	private Map<String, String> startBeforeModulesMap;
 	
-	private List<AdvicePoint> advicePoints = new Vector<AdvicePoint>();
+	private List<AdvicePoint> advicePoints = new ArrayList<>();
 	
-	private IdentityHashMap<String, String> extensionNames = new IdentityHashMap<String, String>();
+	private Map<String, String> extensionNames = new IdentityHashMap<>();
 	
-	private List<Extension> extensions = new Vector<Extension>();
+	private List<Extension> extensions = new ArrayList<>();
 	
-	private Map<String, Properties> messages = new HashMap<String, Properties>();
+	private Map<String, Properties> messages = new HashMap<>();
 	
-	private List<Privilege> privileges = new Vector<Privilege>();
+	private List<Privilege> privileges = new ArrayList<>();
 	
-	private List<GlobalProperty> globalProperties = new Vector<GlobalProperty>();
+	private List<GlobalProperty> globalProperties = new ArrayList<>();
 	
-	private List<String> mappingFiles = new Vector<String>();
+	private List<String> mappingFiles = new ArrayList<>();
 	
-	private Set<String> packagesWithMappedClasses = new HashSet<String>();
+	private Set<String> packagesWithMappedClasses = new HashSet<>();
 	
 	private Document config = null;
 	
@@ -90,7 +89,7 @@ public final class Module {
 	
 	private boolean mandatory = Boolean.FALSE;
 	
-	private List<ModuleConditionalResource> conditionalResources = new ArrayList<ModuleConditionalResource>();
+	private List<ModuleConditionalResource> conditionalResources = new ArrayList<>();
 	
 	// keep a reference to the file that we got this module from so we can delete
 	// it if necessary
@@ -160,7 +159,7 @@ public final class Module {
 			}
 			
 		}
-		catch (ClassNotFoundException e) {
+		catch (ClassNotFoundException | NoClassDefFoundError e) {
 			
 			throw new ModuleException("Unable to load/find moduleActivator: '" + getActivatorName() + "'", name, e);
 		}
@@ -170,10 +169,7 @@ public final class Module {
 		catch (InstantiationException e) {
 			throw new ModuleException("Unable to load/instantiate moduleActivator: '" + getActivatorName() + "'", name, e);
 		}
-		catch (NoClassDefFoundError e) {
-			throw new ModuleException("Unable to load/find moduleActivator: '" + getActivatorName() + "'", name, e);
-		}
-		
+
 		return moduleActivator;
 	}
 	
@@ -261,7 +257,7 @@ public final class Module {
 	 * @return the list of requiredModules
 	 */
 	public List<String> getRequiredModules() {
-		return requiredModulesMap == null ? null : new ArrayList<String>(requiredModulesMap.keySet());
+		return requiredModulesMap == null ? null : new ArrayList<>(requiredModulesMap.keySet());
 	}
 	
 	/**
@@ -284,7 +280,7 @@ public final class Module {
 	 */
 	public void setRequiredModules(List<String> requiredModules) {
 		if (requiredModulesMap == null) {
-			requiredModulesMap = new HashMap<String, String>();
+			requiredModulesMap = new HashMap<>();
 		}
 		
 		for (String module : requiredModules) {
@@ -345,7 +341,7 @@ public final class Module {
 	 * @return list of module names or null
 	 */
 	public List<String> getStartBeforeModules() {
-		return this.startBeforeModulesMap == null ? null : new ArrayList<String>(this.startBeforeModulesMap.keySet());
+		return this.startBeforeModulesMap == null ? null : new ArrayList<>(this.startBeforeModulesMap.keySet());
 	}
 	
 	/**
@@ -367,7 +363,7 @@ public final class Module {
 	 * @return the list of awareOfModules
 	 */
 	public List<String> getAwareOfModules() {
-		return awareOfModulesMap == null ? null : new ArrayList<String>(awareOfModulesMap.keySet());
+		return awareOfModulesMap == null ? null : new ArrayList<>(awareOfModulesMap.keySet());
 	}
 	
 	public String getAwareOfModuleVersion(String awareOfModule) {
@@ -480,6 +476,8 @@ public final class Module {
 	}
 	
 	/**
+	 * Expands (i.e. creates instances of) {@code Extension}s defined by their class name in {@link #setExtensionNames(Map)}.
+	 * 
 	 * @return the extensions
 	 *
 	 * @should not expand extensionNames if extensionNames is null
@@ -488,11 +486,10 @@ public final class Module {
 	 * @should expand extensionNames if extensions does not match extensionNames 
 	 */
 	public List<Extension> getExtensions() {
-		if (extensionsMatchNames()) {
+		if (isNoNeedToExpand()) {
 			return extensions;
-		} else {
-			return expandExtensionNames();
 		}
+		return expandExtensionNames();
 	}
 	
 	/**
@@ -503,16 +500,26 @@ public final class Module {
 	}
 	
 	/**
-	 * A map of pointid to classname. The classname is expected to be a class that extends the
-	 * {@link Extension} object. <br>
+	 * A map of pointId to classname. The classname is expected to be a class that extends the
+	 * {@link Extension} object.
 	 * <br>
 	 * This map will be expanded into full Extension objects the first time {@link #getExtensions()}
-	 * is called
+	 * is called.
+	 * <p>
+	 * The map is a direct representation of {@code extension} tags in a module's config.xml. For example
+	 * <pre>{@code
+	 * <extension>
+	 *     <point>org.openmrs.admin.list</point>
+	 *     <class>org.openmrs.module.reporting.web.extension.ManageAdminListExt</class>
+	 * </extension>
+	 * }
+	 * </pre>
+	 * </p>
 	 *
-	 * @param map from pointid to classname
+	 * @param map from pointid to classname of an extension
 	 * @see ModuleFileParser
 	 */
-	public void setExtensionNames(IdentityHashMap<String, String> map) {
+	public void setExtensionNames(Map<String, String> map) {
 		if (log.isDebugEnabled()) {
 			for (Map.Entry<String, String> entry : extensionNames.entrySet()) {
 				log.debug("Setting extension names: " + entry.getKey() + " : " + entry.getValue());
@@ -521,26 +528,17 @@ public final class Module {
 		this.extensionNames = map;
 	}
 
-	/**
-	 * Tests whether extensions match the contents of extensionNames.  Used to determine
-	 * if expandExtensionNames should to be called.<br>
-	 *
-	 * @return a boolean for whether extensions match the contents of extensionNames
-	 */
-	private boolean extensionsMatchNames() {
-		if (extensionNames != null && extensionNames.size() != 0) {
-			for (Extension ext : extensions) {
-				if (extensionNames.get(ext.getPointId()) != ext.getClass().getName()) {
-					return false;
-				}
-			}
-
-			if (extensions.size() != extensionNames.size()) {
+	private boolean isNoNeedToExpand() {
+		if (extensionNames == null || extensionNames.isEmpty()) {
+			return true;
+		}
+		
+		for (Extension ext : extensions) {
+			if (extensionNames.get(ext.getPointId()) != ext.getClass().getName()) {
 				return false;
 			}
 		}
-		
-		return true;
+		return extensions.size() == extensionNames.size();
 	}
 	
 	/**
@@ -554,38 +552,27 @@ public final class Module {
 	private List<Extension> expandExtensionNames() {
 		ModuleClassLoader moduleClsLoader = ModuleFactory.getModuleClassLoader(this);
 		if (moduleClsLoader == null) {
-			log.debug(String.format("Module class loader is not available, maybe the module %s is stopped/stopping",
-			    getName()));
-		} else if (!extensionsMatchNames()) {
-			extensions.clear();
-			for (Map.Entry<String, String> entry : extensionNames.entrySet()) {
-				String point = entry.getKey();
-				String className = entry.getValue();
-				final String errorLoadClassString = "Unable to load class for extension: ";
-				log.debug("expanding extension names: " + point + " : " + className);
-				try {
-					Class<?> cls = moduleClsLoader.loadClass(className);
-					Extension ext = (Extension) cls.newInstance();
-					ext.setPointId(point);
-					ext.setModuleId(this.getModuleId());
-					extensions.add(ext);
-					log.debug("Added extension: " + ext.getExtensionId() + " : " + ext.getClass());
-				}
-				catch (NoClassDefFoundError e) {
-					log.warn(getModuleId() + ": Unable to find class definition for extension: " + point, e);
-				}
-				catch (ClassNotFoundException e) {
-					log.warn(errorLoadClassString + point, e);
-				}
-				catch (IllegalAccessException e) {
-					log.warn(errorLoadClassString + point, e);
-				}
-				catch (InstantiationException e) {
-					log.warn(errorLoadClassString + point, e);
-				}
-			}
+			log.debug("Module class loader is not available, maybe the module {} is stopped/stopping", getName());
+			return extensions;
 		}
 		
+		extensions.clear();
+		for (Map.Entry<String, String> entry : extensionNames.entrySet()) {
+			String point = entry.getKey();
+			String className = entry.getValue();
+			log.debug(getModuleId() + ": Expanding extension name (point|class): {}|{}", point, className);
+			try {
+				Class<?> cls = moduleClsLoader.loadClass(className);
+				Extension ext = (Extension) cls.newInstance();
+				ext.setPointId(point);
+				ext.setModuleId(this.getModuleId());
+				extensions.add(ext);
+				log.debug(getModuleId() + ": Added extension: {}|{}", ext.getExtensionId(), ext.getClass());
+			}
+			catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoClassDefFoundError e) {
+				log.warn(getModuleId() + ": Unable to create instance of class defined for extension point: " + point, e);
+			}
+		}
 		return extensions;
 	}
 	

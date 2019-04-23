@@ -13,16 +13,16 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.openmrs.BaseOpenmrsMetadata;
+import org.openmrs.BaseChangeableOpenmrsMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Represents the metadata for a task that can be scheduled.
  */
-public class TaskDefinition extends BaseOpenmrsMetadata {
+public class TaskDefinition extends BaseChangeableOpenmrsMetadata {
 	
-	private Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(TaskDefinition.class);
 	
 	// Task metadata
 	private Integer id;
@@ -58,7 +58,7 @@ public class TaskDefinition extends BaseOpenmrsMetadata {
 		this.started = Boolean.FALSE; // default
 		this.startTime = new Date(); // makes it easier during task creation
 		// as we have a default date populated
-		this.properties = new HashMap<String, String>();
+		this.properties = new HashMap<>();
 	}
 	
 	/**

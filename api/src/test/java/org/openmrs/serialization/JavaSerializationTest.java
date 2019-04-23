@@ -14,7 +14,7 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Date;
 
-import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.junit.Test;
 import org.openmrs.Concept;
 import org.openmrs.ConceptClass;
@@ -45,7 +45,7 @@ public class JavaSerializationTest {
         originalPerson.setVoidReason("test");
 
         byte[] serialized = SerializationUtils.serialize(originalPerson);
-        Person copyPerson = (Person) SerializationUtils.deserialize(serialized);
+        Person copyPerson = SerializationUtils.deserialize(serialized);
 
         assertThat(copyPerson.getGender(), is(originalPerson.getGender()));
         assertThat(copyPerson.getBirthdate(), is(originalPerson.getBirthdate()));
@@ -81,7 +81,7 @@ public class JavaSerializationTest {
         originalConcept.setRetireReason("test");
 
         byte[] serialized = SerializationUtils.serialize(originalConcept);
-        Concept copyConcept = (Concept) SerializationUtils.deserialize(serialized);
+        Concept copyConcept = SerializationUtils.deserialize(serialized);
 
         assertThat(copyConcept.getConceptClass(), is(originalConcept.getConceptClass()));
         assertThat(copyConcept.getDatatype(), is(originalConcept.getDatatype()));

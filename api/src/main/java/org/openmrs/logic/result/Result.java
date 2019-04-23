@@ -162,7 +162,7 @@ public class Result extends ArrayList<Result> {
 		        .getValueNumeric(), obs.getValueText(), obs);
 		
 		Concept concept = obs.getConcept();
-		ConceptDatatype conceptDatatype = null;
+		ConceptDatatype conceptDatatype;
 		
 		if (concept != null) {
 			conceptDatatype = concept.getDatatype();
@@ -469,15 +469,15 @@ public class Result extends ArrayList<Result> {
 				case BOOLEAN:
 					return (valueBoolean == null ? false : valueBoolean);
 				case CODED:
-					return (valueCoded == null ? false : true); // TODO: return
+					return (valueCoded != null); // TODO: return
 					// false for "FALSE"
 					// concept
 				case DATETIME:
-					return (valueDatetime == null ? false : true);
+					return (valueDatetime != null);
 				case NUMERIC:
-					return (valueNumeric == null || valueNumeric == 0 ? false : true);
+					return (valueNumeric != null && valueNumeric != 0);
 				case TEXT:
-					return (valueText == null || valueText.length() < 1 ? false : true);
+					return (valueText != null && valueText.length() >= 1);
 				default:
 					return valueBoolean;
 			}
@@ -699,7 +699,7 @@ public class Result extends ArrayList<Result> {
 			}
 			return this;
 		}
-		List<Result> matches = new ArrayList<Result>();
+		List<Result> matches = new ArrayList<>();
 		for (Result r : this) {
 			if (!r.gt(value).isEmpty()) {
 				matches.add(r);
@@ -750,12 +750,12 @@ public class Result extends ArrayList<Result> {
 		if (isSingleResult()) {
 			return this;
 		}
-		Integer something = Integer.valueOf(1);
-		Map<Result, Integer> map = new HashMap<Result, Integer>();
+		Integer something = 1;
+		Map<Result, Integer> map = new HashMap<>();
 		for (Result r : this) {
 			map.put(r, something);
 		}
-		List<Result> uniqueList = new ArrayList<Result>(map.keySet());
+		List<Result> uniqueList = new ArrayList<>(map.keySet());
 		return new Result(uniqueList);
 	}
 	

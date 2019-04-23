@@ -17,6 +17,7 @@ import org.openmrs.Role;
 import org.openmrs.User;
 import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
+import org.openmrs.api.context.Daemon;
 import org.openmrs.api.impl.BaseOpenmrsService;
 import org.openmrs.notification.Alert;
 import org.openmrs.notification.AlertRecipient;
@@ -37,7 +38,7 @@ public class AlertServiceImpl extends BaseOpenmrsService implements Serializable
 	
 	private static final long serialVersionUID = 564561231321112365L;
 	
-	private Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(AlertServiceImpl.class);
 	
 	private AlertDAO dao;
 	
@@ -196,13 +197,12 @@ public class AlertServiceImpl extends BaseOpenmrsService implements Serializable
 		alert.setSatisfiedByAny(true);
 		
 		//If there is not user creator for the alert ( because it is being created at start-up )create a user
-		//TODO switch this to use the daemon user when ticket TRUNK-120 is complete
-		if (alert.getCreator() == null) {
-			alert.setCreator(new User(1));
-		}
+		if (alert.getCreator() == null) { 
+			User daemonUser = Context.getUserService().getUserByUuid(Daemon.getDaemonUserUuid());
+			alert.setCreator(daemonUser);
+		} 
 		
 		// save the alert to send it to all administrators
 		Context.getAlertService().saveAlert(alert);
-		
 	}
 }

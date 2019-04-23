@@ -9,29 +9,6 @@
  */
 package org.openmrs.api;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.lang.reflect.Field;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.Vector;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -70,6 +47,28 @@ import org.openmrs.test.BaseContextSensitiveTest;
 import org.openmrs.util.DateUtil;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.PrivilegeConstants;
+
+import java.lang.reflect.Field;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests all methods in the {@link EncounterService}
@@ -619,6 +618,28 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 		assertSame(obsWithDifferentDateBefore, obsWithDifferentDateAfter);
 	}
 	
+	@Test
+	public void saveEncounter_shouldCascadeUpdatedEncounterDatetimeToObsDatetimeOfAllObsWithMatchingObsDatetime() {
+		executeDataSet(ENC_OBS_HIERARCHY_DATA_XML);
+		EncounterService es = Context.getEncounterService();
+		Encounter enc = es.getEncounter(100);
+		
+		// sanity check
+		assertEquals(3, enc.getAllObs().size());
+		for (Obs obs : enc.getAllObs()) {
+			assertEquals(enc.getEncounterDatetime(), obs.getObsDatetime());
+		}
+	
+		// update the date, assure it gets propagates to all obs
+		Date newDate = new Date();
+		enc.setEncounterDatetime(newDate);
+		es.saveEncounter(enc);
+
+		for (Obs obs : enc.getAllObs()) {
+			assertEquals(DateUtil.truncateToSeconds(newDate), DateUtil.truncateToSeconds(obs.getObsDatetime()));
+		}
+	}
+	
 	/**
 	 * @see EncounterService#saveEncounter(Encounter)
 	 */
@@ -1003,7 +1024,7 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 	 */
 	@Test
 	public void getEncounters_shouldGetEncountersByForm() {
-		List<Form> forms = new Vector<>();
+		List<Form> forms = new ArrayList<>();
 		forms.add(new Form(1));
 		EncounterSearchCriteria encounterSearchCriteria = new EncounterSearchCriteriaBuilder().setEnteredViaForms(forms)
 		        .setIncludeVoided(true).createEncounterSearchCriteria();
@@ -1017,7 +1038,7 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 	 */
 	@Test
 	public void getEncounters_shouldGetEncountersByType() {
-		List<EncounterType> types = new Vector<>();
+		List<EncounterType> types = new ArrayList<>();
 		types.add(new EncounterType(1));
 		EncounterSearchCriteria encounterSearchCriteria = new EncounterSearchCriteriaBuilder().setEncounterTypes(types)
 		        .setIncludeVoided(true).createEncounterSearchCriteria();
@@ -1618,7 +1639,7 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 	 */
 	@Test
 	public void getEncounters_shouldGetEncountersByVisitType() {
-		List<VisitType> visitTypes = new Vector<>();
+		List<VisitType> visitTypes = new ArrayList<>();
 		visitTypes.add(new VisitType(2));
 		EncounterSearchCriteria encounterSearchCriteria = new EncounterSearchCriteriaBuilder().setVisitTypes(visitTypes)
 		        .setIncludeVoided(true).createEncounterSearchCriteria();
@@ -2812,7 +2833,7 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 		Assert.assertNotEquals(sourceEncounter.getId(), transferredEncounter.getId());
 		Assert.assertEquals(targetPatient, transferredEncounter.getPatient());
 		
-		//check order
+		//check order associated with encounter is not transferred
 		Assert.assertEquals(0, transferredOrders.size());
 		
 		//check obs
@@ -2820,8 +2841,9 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 		Assert.assertEquals(targetPatient, transferredObservations.get(0).getPerson());
 		Assert.assertEquals(targetPatient, transferredObservations.get(1).getPerson());
 		
-		Assert.assertNull(transferredObservations.get(0).getOrder());
-		Assert.assertNull(transferredObservations.get(1).getOrder());
+		// however any references from obs to orders should be preserved
+		Assert.assertNotNull(transferredObservations.get(0).getOrder());
+		Assert.assertNotNull(transferredObservations.get(1).getOrder());
 		
 		//check if form is transferred
 		Assert.assertNotNull(transferredEncounter.getForm());
@@ -2910,9 +2932,9 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 		Context.getEncounterService().saveEncounter(encounter);
 		
 		Context.flushSession();
-		
-		List<Order> orders = new ArrayList<>();
-		orders.addAll(Context.getEncounterService().getEncounterByUuid(encounter.getUuid()).getOrders());
+
+		List<Order> orders = new ArrayList<>(
+				Context.getEncounterService().getEncounterByUuid(encounter.getUuid()).getOrders());
 		
 		assertNotNull("OrderGroup is saved", orders.get(0).getOrderGroup());
 		assertEquals("OrderGroup isa same for both the orders ", true, orders.get(0).getOrderGroup().equals(
@@ -2979,9 +3001,9 @@ public class EncounterServiceTest extends BaseContextSensitiveTest {
 		Context.getEncounterService().saveEncounter(encounter);
 		
 		Context.flushSession();
-		
-		List<Order> orders = new ArrayList<>();
-		orders.addAll(Context.getEncounterService().getEncounterByUuid(encounter.getUuid()).getOrders());
+
+		List<Order> orders = new ArrayList<>(
+				Context.getEncounterService().getEncounterByUuid(encounter.getUuid()).getOrders());
 		
 		HashMap<Integer, OrderGroup> orderGroups = new HashMap<>();
 		for (Order order : orders) {

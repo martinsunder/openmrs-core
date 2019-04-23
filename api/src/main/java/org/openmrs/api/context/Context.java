@@ -25,7 +25,7 @@ import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 
 import org.aopalliance.aop.Advice;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Allergen;
 import org.openmrs.GlobalProperty;
 import org.openmrs.PersonName;
@@ -36,7 +36,9 @@ import org.openmrs.api.APIException;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.CohortService;
 import org.openmrs.api.ConceptService;
+import org.openmrs.api.ConditionService;
 import org.openmrs.api.DatatypeService;
+import org.openmrs.api.DiagnosisService;
 import org.openmrs.api.EncounterService;
 import org.openmrs.api.FormService;
 import org.openmrs.api.LocationService;
@@ -78,6 +80,9 @@ import org.openmrs.validator.ValidateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.Advisor;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 
 /**
  * Represents an OpenMRS <code>Context</code>, which may be used to authenticate to the database and
@@ -136,13 +141,15 @@ public class Context {
 
 	// Using "wrapper" (Object array) around UserContext to avoid ThreadLocal
 	// bug in Java 1.5
-	private static final ThreadLocal<Object[] /* UserContext */> userContextHolder = new ThreadLocal<Object[] /* UserContext */>();
+	private static final ThreadLocal<Object[] /* UserContext */> userContextHolder = new ThreadLocal<>();
 
 	private static ServiceContext serviceContext;
 
 	private static Properties runtimeProperties = new Properties();
 
 	private static Properties configProperties = new Properties();
+
+	private static AuthenticationScheme authenticationScheme;
 
 	/**
 	 * Default public constructor
@@ -176,6 +183,32 @@ public class Context {
 	}
 
 	/**
+	 * Spring init method that sets the authentication scheme.
+	 */
+	static private void setAuthenticationScheme() {
+
+		authenticationScheme = new UsernamePasswordAuthenticationScheme();
+
+		try {
+			authenticationScheme = Context.getServiceContext().getApplicationContext().getBean(AuthenticationScheme.class); // manual autowiring (from a module)
+			log.info("An authentication scheme override was provided. Using this one in place of the OpenMRS default authentication scheme.");
+		}
+		catch(NoUniqueBeanDefinitionException e) {
+			log.error("Multiple authentication schemes overrides are being provided, this is currently not supported. Sticking to OpenMRS default authentication scheme.");
+		}
+		catch(NoSuchBeanDefinitionException e) {
+			log.debug("No authentication scheme override was provided. Sticking to OpenMRS default authentication scheme.");
+		}
+		catch(BeansException e){
+			log.error("Fatal error encountered when injecting the authentication scheme override. Sticking to OpenMRS default authentication scheme.");
+		}
+
+		if (authenticationScheme instanceof DaoAuthenticationScheme) {
+			((DaoAuthenticationScheme) authenticationScheme).setContextDao(getContextDAO());
+		}
+	}
+
+	/**
 	 * Loads a class with an instance of the OpenmrsClassLoader. Convenience method equivalent to
 	 * OpenmrsClassLoader.getInstance().loadClass(className);
 	 *
@@ -197,9 +230,7 @@ public class Context {
 	 * @param ctx UserContext to set
 	 */
 	public static void setUserContext(UserContext ctx) {
-		if (log.isTraceEnabled()) {
-			log.trace("Setting user context " + ctx);
-		}
+		log.trace("Setting user context {}", ctx);
 
 		Object[] arr = new Object[] { ctx };
 		userContextHolder.set(arr);
@@ -209,9 +240,7 @@ public class Context {
 	 * Clears the user context from the threadlocal.
 	 */
 	public static void clearUserContext() {
-		if (log.isTraceEnabled()) {
-			log.trace("Clearing user context " + userContextHolder.get());
-		}
+		log.trace("Clearing user context {}", Arrays.toString(userContextHolder.get()));
 
 		userContextHolder.remove();
 	}
@@ -225,15 +254,12 @@ public class Context {
 	 */
 	public static UserContext getUserContext() {
 		Object[] arr = userContextHolder.get();
-
-		if (log.isTraceEnabled()) {
-			log.trace("Getting user context " + Arrays.toString(arr) + " from userContextHolder " + userContextHolder);
-		}
+		log.trace("Getting user context {} from userContextHolder {}", Arrays.toString(arr), userContextHolder);
 
 		if (arr == null) {
 			log.trace("userContext is null.");
 			throw new APIException(
-			        "A user context must first be passed to setUserContext()...use Context.openSession() (and closeSession() to prevent memory leaks!) before using the API");
+					"A user context must first be passed to setUserContext()...use Context.openSession() (and closeSession() to prevent memory leaks!) before using the API");
 		}
 		return (UserContext) userContextHolder.get()[0];
 	}
@@ -246,13 +272,14 @@ public class Context {
 	 */
 	static ServiceContext getServiceContext() {
 		if (serviceContext == null) {
-			log.error("serviceContext is null.  Creating new ServiceContext()");
-			serviceContext = ServiceContext.getInstance();
+			synchronized (Context.class) {
+				if (serviceContext == null) {
+					log.error("serviceContext is null.  Creating new ServiceContext()");
+					serviceContext = ServiceContext.getInstance();
+				}
+			}
 		}
-
-		if (log.isTraceEnabled()) {
-			log.trace("serviceContext: " + serviceContext);
-		}
+		log.trace("serviceContext: {}", serviceContext);
 
 		return ServiceContext.getInstance();
 	}
@@ -271,6 +298,20 @@ public class Context {
 	}
 
 	/**
+	 * OpenMRS provides its default authentication scheme that authenticates via DAO with OpenMRS usernames and passwords.
+	 * 
+	 * Any module can provide an authentication scheme override by Spring wiring a custom implementation of {@link AuthenticationScheme}.
+	 * This method would return Core's default authentication scheme unless a Spring override is provided somewhere else.
+	 * 
+	 * @return The enforced authentication scheme.
+	 */
+	public static AuthenticationScheme getAuthenticationScheme() {
+		return authenticationScheme;
+	}
+
+	/**
+	 * @deprecated as of 2.3.0, replaced by {@link #authenticate(Credentials)}
+	 * 
 	 * Used to authenticate user within the context
 	 *
 	 * @param username user's identifier token for login
@@ -282,18 +323,30 @@ public class Context {
 	 * @should not authenticate with null password and proper username
 	 * @should not authenticate with null password and proper system id
 	 */
+	@Deprecated
 	public static void authenticate(String username, String password) throws ContextAuthenticationException {
-		if (log.isDebugEnabled()) {
-			log.debug("Authenticating with username: " + username);
-		}
+		authenticate(new UsernamePasswordCredentials(username, password));
+	}
+
+	/**
+	 * @param credentials
+	 * @throws ContextAuthenticationException
+	 * 
+	 * @since 2.3.0
+	 */
+	public static Authenticated authenticate(Credentials credentials) throws ContextAuthenticationException {
 
 		if (Daemon.isDaemonThread()) {
 			log.error("Authentication attempted while operating on a "
 					+ "daemon thread, authenticating is not necessary or allowed");
-			return;
+			return new BasicAuthenticated(Daemon.getDaemonThreadUser(), "No auth scheme used by Context - Daemon user is always authenticated.");
 		}
 
-		getUserContext().authenticate(username, password, getContextDAO());
+		if (credentials == null) {
+			throw new ContextAuthenticationException("Context cannot authenticate with null credentials.");
+		}
+
+		return getUserContext().authenticate(credentials);
 	}
 
 	/**
@@ -308,10 +361,7 @@ public class Context {
 		if (Daemon.isDaemonThread()) {
 			return;
 		}
-
-		if (log.isDebugEnabled()) {
-			log.debug("Refreshing authenticated user");
-		}
+		log.debug("Refreshing authenticated user");
 
 		getUserContext().refreshAuthenticatedUser();
 	}
@@ -324,9 +374,7 @@ public class Context {
 	 * @should change locale when become another user
 	 */
 	public static void becomeUser(String systemId) throws ContextAuthenticationException {
-		if (log.isInfoEnabled()) {
-			log.info("systemId: " + systemId);
-		}
+		log.info("systemId: {}", systemId);
 
 		User user = getUserContext().becomeUser(systemId);
 
@@ -349,9 +397,7 @@ public class Context {
 	 * @return copy of the runtime properties
 	 */
 	public static Properties getRuntimeProperties() {
-		if (log.isTraceEnabled()) {
-			log.trace("getting runtime properties. size: " + runtimeProperties.size());
-		}
+		log.trace("getting runtime properties. size: {}", runtimeProperties.size());
 
 		Properties props = new Properties();
 		props.putAll(runtimeProperties);
@@ -412,6 +458,24 @@ public class Context {
 	 */
 	public static PersonService getPersonService() {
 		return getServiceContext().getPersonService();
+	}
+
+	/**
+	 * @return condition-related services
+	 * 
+	 * @since 2.2
+	 */
+	public static ConditionService getConditionService(){
+		return getServiceContext().getConditionService();
+	}
+
+	/**
+	 * @return diagnosis-related services
+	 *
+	 * @since 2.2
+	 */
+	public static DiagnosisService getDiagnosisService(){
+		return getServiceContext().getDiagnosisService();
 	}
 
 	/**
@@ -532,26 +596,32 @@ public class Context {
 	 */
 	private static Session getMailSession() {
 		if (mailSession == null) {
-			AdministrationService adminService = getAdministrationService();
+			synchronized (Context.class) {
+				if (mailSession == null) {
+					AdministrationService adminService = getAdministrationService();
 
-			Properties props = new Properties();
-			props.setProperty("mail.transport.protocol", adminService.getGlobalProperty("mail.transport_protocol"));
-			props.setProperty("mail.smtp.host", adminService.getGlobalProperty("mail.smtp_host"));
-			props.setProperty("mail.smtp.port", adminService.getGlobalProperty("mail.smtp_port"));
-			props.setProperty("mail.from", adminService.getGlobalProperty("mail.from"));
-			props.setProperty("mail.debug", adminService.getGlobalProperty("mail.debug"));
-			props.setProperty("mail.smtp.auth", adminService.getGlobalProperty("mail.smtp_auth"));
+					Properties props = new Properties();
+					props.setProperty("mail.transport.protocol", adminService.getGlobalProperty("mail.transport_protocol"));
+					props.setProperty("mail.smtp.host", adminService.getGlobalProperty("mail.smtp_host"));
+					props.setProperty("mail.smtp.port", adminService.getGlobalProperty("mail.smtp_port"));
+					props.setProperty("mail.from", adminService.getGlobalProperty("mail.from"));
+					props.setProperty("mail.debug", adminService.getGlobalProperty("mail.debug"));
+					props.setProperty("mail.smtp.auth", adminService.getGlobalProperty("mail.smtp_auth"));
+					props.setProperty(OpenmrsConstants.GP_MAIL_SMTP_STARTTLS_ENABLE, adminService.getGlobalProperty(OpenmrsConstants.GP_MAIL_SMTP_STARTTLS_ENABLE));
 
-			Authenticator auth = new Authenticator() {
+					Authenticator auth = new Authenticator() {
 
-				@Override
-				public PasswordAuthentication getPasswordAuthentication() {
-					return new PasswordAuthentication(getAdministrationService().getGlobalProperty("mail.user"),
-					        getAdministrationService().getGlobalProperty("mail.password"));
+						@Override
+						public PasswordAuthentication getPasswordAuthentication() {
+							return new PasswordAuthentication(getAdministrationService().getGlobalProperty("mail.user"),
+									getAdministrationService().getGlobalProperty("mail.password"));
+						}
+					};
+
+					mailSession = Session.getInstance(props, auth);
 				}
-			};
+			}
 
-			mailSession = Session.getInstance(props, auth);
 		}
 		return mailSession;
 	}
@@ -608,16 +678,13 @@ public class Context {
 		if (!isSessionOpen()) {
 			return; // fail early if there isn't even a session open
 		}
-
-		if (log.isDebugEnabled()) {
-			log.debug("Logging out : " + getAuthenticatedUser());
-		}
+		log.debug("Logging out : {}", getAuthenticatedUser());
 
 		getUserContext().logout();
 
 		// reset the UserContext object (usually cleared out by closeSession()
 		// soon after this)
-		setUserContext(new UserContext());
+		setUserContext(new UserContext(getAuthenticationScheme()));
 	}
 
 	/**
@@ -650,10 +717,10 @@ public class Context {
 	 */
 	public static void requirePrivilege(String privilege) throws ContextAuthenticationException {
 		if (!hasPrivilege(privilege)) {
-			String errorMessage = null;
+			String errorMessage;
 			if (StringUtils.isNotBlank(privilege)) {
 				errorMessage = Context.getMessageSourceService().getMessage("error.privilegesRequired",
-				    new Object[] { privilege }, null);
+						new Object[] { privilege }, null);
 			} else {
 				//Should we even be here if the privilege is blank?
 				errorMessage = Context.getMessageSourceService().getMessage("error.privilegesRequiredNoArgs");
@@ -704,7 +771,7 @@ public class Context {
 	 */
 	public static void openSession() {
 		log.trace("opening session");
-		setUserContext(new UserContext()); // must be cleared out in
+		setUserContext(new UserContext(getAuthenticationScheme())); // must be cleared out in
 		// closeSession()
 		getContextDAO().openSession();
 	}
@@ -739,7 +806,7 @@ public class Context {
 	 */
 	public static void closeSessionWithCurrentUser() {
 		getContextDAO().closeSession();
-    }
+	}
 
 	/**
 	 * Clears cached changes made so far during this unit of work without writing them to the
@@ -779,7 +846,7 @@ public class Context {
 	 * @param obj The object to refresh from the database in the session
 	 */
 	public static void refreshEntity(Object obj) {
-		log.trace("refreshing object: "+obj);
+		log.trace("refreshing object: {}", obj);
 		getContextDAO().refreshEntity(obj);
 	}
 
@@ -807,8 +874,8 @@ public class Context {
 	 * @see InputRequiredException#getRequiredInput() InputRequiredException#getRequiredInput() for
 	 *      the required question/datatypes
 	 */
-	public synchronized static void startup(Properties props) throws DatabaseUpdateException, InputRequiredException,
-	        ModuleMustStartException {
+	public static synchronized void startup(Properties props) throws DatabaseUpdateException, InputRequiredException,
+	ModuleMustStartException {
 		// do any context database specific startup
 		getContextDAO().startup(props);
 
@@ -851,8 +918,8 @@ public class Context {
 	 * @see InputRequiredException#getRequiredInput() InputRequiredException#getRequiredInput() for
 	 *      the required question/datatypes
 	 */
-	public synchronized static void startup(String url, String username, String password, Properties properties)
-	        throws DatabaseUpdateException, InputRequiredException, ModuleMustStartException {
+	public static synchronized void startup(String url, String username, String password, Properties properties)
+			throws DatabaseUpdateException, InputRequiredException, ModuleMustStartException {
 		if (properties == null) {
 			properties = new Properties();
 		}
@@ -919,7 +986,7 @@ public class Context {
 	 * @return The requested Service
 	 * @should return the same object when called multiple times for the same class
 	 */
-	public static <T extends Object> T getService(Class<? extends T> cls) {
+	public static <T> T getService(Class<? extends T> cls) {
 		return getServiceContext().getService(cls);
 	}
 
@@ -975,7 +1042,7 @@ public class Context {
 		// setting core roles
 		try {
 			Context.addProxyPrivilege(PrivilegeConstants.MANAGE_ROLES);
-			Set<String> currentRoleNames = new HashSet<String>();
+			Set<String> currentRoleNames = new HashSet<>();
 			for (Role role : Context.getUserService().getAllRoles()) {
 				currentRoleNames.add(role.getRole().toUpperCase());
 			}
@@ -1000,7 +1067,7 @@ public class Context {
 		// setting core privileges
 		try {
 			Context.addProxyPrivilege(PrivilegeConstants.MANAGE_PRIVILEGES);
-			Set<String> currentPrivilegeNames = new HashSet<String>();
+			Set<String> currentPrivilegeNames = new HashSet<>();
 			for (Privilege privilege : Context.getUserService().getAllPrivileges()) {
 				currentPrivilegeNames.add(privilege.getPrivilege().toUpperCase());
 			}
@@ -1026,9 +1093,9 @@ public class Context {
 		try {
 			Context.addProxyPrivilege(PrivilegeConstants.MANAGE_GLOBAL_PROPERTIES);
 			Context.addProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
-			Set<String> currentPropNames = new HashSet<String>();
-			Map<String, GlobalProperty> propsMissingDescription = new HashMap<String, GlobalProperty>();
-			Map<String, GlobalProperty> propsMissingDatatype = new HashMap<String, GlobalProperty>();
+			Set<String> currentPropNames = new HashSet<>();
+			Map<String, GlobalProperty> propsMissingDescription = new HashMap<>();
+			Map<String, GlobalProperty> propsMissingDatatype = new HashMap<>();
 			for (GlobalProperty prop : Context.getAdministrationService().getAllGlobalProperties()) {
 				currentPropNames.add(prop.getProperty().toUpperCase());
 				if (prop.getDescription() == null) {
@@ -1079,10 +1146,10 @@ public class Context {
 		ValidateUtil.setDisableValidation(disableValidation);
 
 		PersonName.setFormat(Context.getAdministrationService().getGlobalProperty(
-		    OpenmrsConstants.GLOBAL_PROPERTY_LAYOUT_NAME_FORMAT));
+				OpenmrsConstants.GLOBAL_PROPERTY_LAYOUT_NAME_FORMAT));
 
 		Allergen.setOtherNonCodedConceptUuid(Context.getAdministrationService().getGlobalProperty(
-		    OpenmrsConstants.GP_ALLERGEN_OTHER_NON_CODED_UUID));
+				OpenmrsConstants.GP_ALLERGEN_OTHER_NON_CODED_UUID));
 	}
 
 	/**
@@ -1099,7 +1166,7 @@ public class Context {
 	 *      the required question/datatypes
 	 */
 	private static void checkForDatabaseUpdates(Properties props) throws DatabaseUpdateException, InputRequiredException {
-		boolean updatesRequired = true;
+		boolean updatesRequired;
 		try {
 			updatesRequired = DatabaseUpdater.updatesRequired();
 		}
@@ -1113,7 +1180,7 @@ public class Context {
 				DatabaseUpdater.executeChangelog();
 			} else {
 				throw new DatabaseUpdateException(
-				        "Database updates are required.  Call Context.updateDatabase() before .startup() to continue.");
+						"Database updates are required.  Call Context.updateDatabase() before .startup() to continue.");
 			}
 		}
 	}
@@ -1181,7 +1248,7 @@ public class Context {
 	 * @since 1.5
 	 * @see ServiceContext#getRegisteredComponents(Class)
 	 */
-	public static <T extends Object> List<T> getRegisteredComponents(Class<T> type) {
+	public static <T> List<T> getRegisteredComponents(Class<T> type) {
 		return getServiceContext().getRegisteredComponents(type);
 	}
 

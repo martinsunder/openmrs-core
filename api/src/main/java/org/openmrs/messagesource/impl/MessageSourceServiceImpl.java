@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.api.context.Context;
 import org.openmrs.messagesource.MessageSourceService;
 import org.openmrs.messagesource.MutableMessageSource;
@@ -34,9 +34,9 @@ import org.springframework.context.NoSuchMessageException;
  */
 public class MessageSourceServiceImpl implements MessageSourceService {
 	
-	private Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(MessageSourceServiceImpl.class);
 	
-	private Set<MutableMessageSource> availableMessageSources = new HashSet<MutableMessageSource>();
+	private Set<MutableMessageSource> availableMessageSources = new HashSet<>();
 	
 	private MutableMessageSource activeMessageSource;
 	

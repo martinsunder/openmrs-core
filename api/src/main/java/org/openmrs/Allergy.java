@@ -21,7 +21,7 @@ import org.openmrs.util.OpenmrsUtil;
 /**
  * Represent allergy
  */
-public class Allergy extends BaseOpenmrsData {
+public class Allergy extends BaseChangeableOpenmrsData {
 	
 	public static final long serialVersionUID = 1;
 	
@@ -33,9 +33,9 @@ public class Allergy extends BaseOpenmrsData {
 	
 	private Concept severity;
 	
-	private String comment;
+	private String comments;
 	
-	private List<AllergyReaction> reactions = new ArrayList<AllergyReaction>();
+	private List<AllergyReaction> reactions = new ArrayList<>();
 	
 	/**
 	 * Default constructor
@@ -50,11 +50,11 @@ public class Allergy extends BaseOpenmrsData {
 	 * @param comment the comment to set
 	 * @param reactions the reactions to set
 	 */
-	public Allergy(Patient patient, Allergen allergen, Concept severity, String comment, List<AllergyReaction> reactions) {
+	public Allergy(Patient patient, Allergen allergen, Concept severity, String comments, List<AllergyReaction> reactions) {
 		this.patient = patient;
 		this.allergen = allergen;
 		this.severity = severity;
-		this.comment = comment;
+		this.comments = comments;
 		
 		//we do not allow to be in a state where reactions is null
 		if (reactions != null) {
@@ -158,16 +158,36 @@ public class Allergy extends BaseOpenmrsData {
 	
 	/**
 	 * @return Returns the comment
+	 * @deprecated as of 2.3.0, replaced by {@link #getComments()}
 	 */
+	@Deprecated
 	public String getComment() {
-		return comment;
+		return getComments();
 	}
 	
 	/**
 	 * @param comment the comment to set
+	 * @deprecated as of 2.3.0, replaced by {@link #setComments(String)}
 	 */
+	@Deprecated
 	public void setComment(String comment) {
-		this.comment = comment;
+		setComments(comment);
+	}
+	
+	/**
+	 * @return Returns the comments
+	 * @since 2.3.0
+	 */
+	public String getComments() {
+		return comments;
+	}
+	
+	/**
+	 * @param comments the comments to set
+	 * @since 2.3.0
+	 */
+	public void setComments(String comments) {
+		this.comments = comments;
 	}
 	/**
 	 * @return Returns the reactions
@@ -269,11 +289,7 @@ public class Allergy extends BaseOpenmrsData {
 		if (!OpenmrsUtil.nullSafeEquals(getComment(), allergy.getComment())) {
 			return false;
 		}
-		if (!hasSameReactions(allergy)) {
-			return false;
-		}
-		
-		return true;
+		return hasSameReactions(allergy);
 	}
 	
 	/**
@@ -321,14 +337,14 @@ public class Allergy extends BaseOpenmrsData {
 	 * @throws InvocationTargetException
 	 * @throws IllegalAccessException
 	 */
-	public void copy(Allergy allergy) throws InvocationTargetException, IllegalAccessException {
+	public void copy(Allergy allergy) {
 		setAllergyId(null);
 		setUuid(UUID.randomUUID().toString());
 		setPatient(allergy.getPatient());
 		setAllergen(allergy.getAllergen());
 		setSeverity(allergy.getSeverity());
 		setComment(allergy.getComment());
-		setReactions(new ArrayList<AllergyReaction>());
+		setReactions(new ArrayList<>());
 		
 		for (AllergyReaction reaction : allergy.getReactions()) {
 			reactions.add(reaction);
@@ -338,7 +354,7 @@ public class Allergy extends BaseOpenmrsData {
 	}
 
     private List<Concept> getReactionConcepts(){
-        List<Concept> reactionConcepts = new ArrayList<Concept>(getReactions().size());
+        List<Concept> reactionConcepts = new ArrayList<>(getReactions().size());
         for (AllergyReaction ar : getReactions()) {
             reactionConcepts.add(ar.getReaction());
         }

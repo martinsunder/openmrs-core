@@ -19,7 +19,7 @@ import org.springframework.util.StringUtils;
 
 public class ConceptMapTypeEditor extends PropertyEditorSupport {
 	
-	private final static Logger log = LoggerFactory.getLogger(ConceptMapTypeEditor.class);
+	private static final Logger log = LoggerFactory.getLogger(ConceptMapTypeEditor.class);
 	
 	public ConceptMapTypeEditor() {
 	}
@@ -46,7 +46,7 @@ public class ConceptMapTypeEditor extends PropertyEditorSupport {
 	@Override
 	public String getAsText() {
 		ConceptMapType mapType = (ConceptMapType) getValue();
-		if (mapType == null) {
+		if (mapType == null || mapType.getConceptMapTypeId() == null) {
 			return "";
 		}
 		

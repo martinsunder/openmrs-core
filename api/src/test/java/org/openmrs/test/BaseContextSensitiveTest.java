@@ -26,7 +26,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.DatabaseUnitRuntimeException;
-import org.dbunit.database.AmbiguousTableNameException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
@@ -65,7 +64,6 @@ import org.dbunit.operation.DatabaseOperation;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.H2Dialect;
-import org.hibernate.jdbc.ReturningWork;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -83,6 +81,8 @@ import org.openmrs.annotation.OpenmrsProfileExcludeFilter;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.context.ContextAuthenticationException;
 import org.openmrs.api.context.ContextMockHelper;
+import org.openmrs.api.context.Credentials;
+import org.openmrs.api.context.UsernamePasswordCredentials;
 import org.openmrs.module.ModuleConstants;
 import org.openmrs.util.OpenmrsClassLoader;
 import org.openmrs.util.OpenmrsConstants;
@@ -105,14 +105,14 @@ import org.xml.sax.InputSource;
  * extend anything
  */
 @ContextConfiguration(locations = { "classpath:applicationContext-service.xml", "classpath*:openmrs-servlet.xml",
-        "classpath*:moduleApplicationContext.xml" })
+        "classpath*:moduleApplicationContext.xml", "classpath*:TestingApplicationContext.xml" })
 @TestExecutionListeners( { TransactionalTestExecutionListener.class, SkipBaseSetupAnnotationExecutionListener.class,
         StartModuleExecutionListener.class })
 @Transactional
 @TransactionConfiguration(defaultRollback = true)
 public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringContextTests {
 	
-	private static Logger log = LoggerFactory.getLogger(BaseContextSensitiveTest.class);
+	private static final Logger log = LoggerFactory.getLogger(BaseContextSensitiveTest.class);
 	
 	/**
 	 * Only the classpath/package path and filename of the initial dataset
@@ -308,7 +308,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 		// if we're using the in-memory hypersonic database, add those
 		// connection properties here to override what is in the runtime
 		// properties
-		if (useInMemoryDatabase() == true) {
+		if (useInMemoryDatabase()) {
 			runtimeProperties.setProperty(Environment.DIALECT, H2Dialect.class.getName());
 			String url = "jdbc:h2:mem:openmrs;DB_CLOSE_DELAY=30;LOCK_TIMEOUT=10000";
 			runtimeProperties.setProperty(Environment.URL, url);
@@ -368,6 +368,17 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 	}
 	
 	/**
+	 * This method provides the credentials to authenticate the user that is authenticated through the base setup.
+	 * This method can be overridden when setting up test application contexts that are *not* using the default authentication scheme.
+	 * 
+	 * @return The credentials to use for base setup authentication.
+	 * @since 2.3.0
+	 */
+	protected Credentials getCredentials() {
+		return new UsernamePasswordCredentials("admin", "test");
+	}
+	
+	/**
 	 * Authenticate to the Context. A popup box will appear asking the current user to enter
 	 * credentials unless there is a junit.username and junit.password defined in the runtime
 	 * properties
@@ -380,7 +391,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 		}
 		
 		try {
-			Context.authenticate("admin", "test");
+			Context.authenticate(getCredentials());
 			authenticatedUser = Context.getAuthenticatedUser();
 			return;
 		}
@@ -556,19 +567,13 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 	public Connection getConnection() {
 		SessionFactory sessionFactory = (SessionFactory) applicationContext.getBean("sessionFactory");
 		
-		return sessionFactory.getCurrentSession().doReturningWork(new ReturningWork<Connection>() {
-			
-			@Override
-			public Connection execute(Connection connection) throws SQLException {
-				return connection;
-			}
-		});
+		return sessionFactory.getCurrentSession().doReturningWork(connection -> connection);
 	}
 	
 	/**
 	 * This initializes the empty in-memory database with some rows in order to actually run some
 	 * tests
-	 * 
+	 *
 	 * @throws SQLException
 	 * @throws Exception
 	 */
@@ -577,19 +582,23 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 		if (!useInMemoryDatabase())
 			throw new RuntimeException(
 			        "You shouldn't be initializing a NON in-memory database. Consider unoverriding useInMemoryDatabase");
-		/*
-		 * Hbm2ddl used in tests creates primary key columns, which are not auto incremented, if
-		 * NativeIfNotAssignedIdentityGenerator is used. We need to alter those columns in tests.
-		 */
-		List<String> tables = Arrays.asList("concept");
-		for (String table : tables) {
-			getConnection().prepareStatement("ALTER TABLE " + table + " ALTER COLUMN " + table + "_id INT AUTO_INCREMENT")
-			        .execute();
-		}
-		
+
+		setAutoIncrementOnTablesWithNativeIfNotAssignedIdentityGenerator();
 		executeDataSet(INITIAL_XML_DATASET_PACKAGE_PATH);
 	}
-	
+
+	public void setAutoIncrementOnTablesWithNativeIfNotAssignedIdentityGenerator() throws SQLException {
+		/*
+		 * Hbm2ddl used in tests creates primary key columns, which are not auto incremented if
+		 * NativeIfNotAssignedIdentityGenerator is used. We need to alter those columns in tests.
+		 */
+		List<String> tables = Collections.singletonList("concept");
+		for (String table : tables) {
+			getConnection().prepareStatement("ALTER TABLE " + table + " ALTER COLUMN " + table + "_id INT AUTO_INCREMENT")
+					.execute();
+		}
+	}
+
 	/**
 	 * Note that with the H2 DB this operation always commits an open transaction.
 	 * 
@@ -667,13 +676,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 					
 					reader.close();
 				}
-				catch (FileNotFoundException e) {
-					throw new DatabaseUnitRuntimeException(e);
-				}
-				catch (DataSetException e) {
-					throw new DatabaseUnitRuntimeException(e);
-				}
-				catch (IOException e) {
+				catch (DataSetException | IOException e) {
 					throw new DatabaseUnitRuntimeException(e);
 				}
 			}
@@ -794,10 +797,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 			//insert new rows, update existing rows, and leave others alone
 			DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
 		}
-		catch (DatabaseUnitException e) {
-			throw new DatabaseUnitRuntimeException(e);
-		}
-		catch (SQLException e) {
+		catch (DatabaseUnitException | SQLException e) {
 			throw new DatabaseUnitRuntimeException(e);
 		}
 	}
@@ -850,13 +850,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 			
 			isBaseSetup = false;
 		}
-		catch (AmbiguousTableNameException e) {
-			throw new DatabaseUnitRuntimeException(e);
-		}
-		catch (SQLException e) {
-			throw new DatabaseUnitRuntimeException(e);
-		}
-		catch (DatabaseUnitException e) {
+		catch (SQLException | DatabaseUnitException e) {
 			throw new DatabaseUnitRuntimeException(e);
 		}
 	}

@@ -64,8 +64,6 @@ import org.openmrs.test.SkipBaseSetup;
 import org.openmrs.test.TestUtil;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.OpenmrsUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,7 +77,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Vector;
 import java.util.stream.Collectors;
 
 /**
@@ -89,9 +86,6 @@ import java.util.stream.Collectors;
  * does not use the context, but mocks dependencies.
  */
 public class PatientServiceTest extends BaseContextSensitiveTest {
-	
-	// Logger
-	protected final Logger log = LoggerFactory.getLogger(getClass());
 	
 	// Datasets
 	protected static final String CREATE_PATIENT_XML = "org/openmrs/api/include/PatientServiceTest-createPatient.xml";
@@ -153,13 +147,11 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	}
 
 	private void voidOrdersForType(Collection<Patient> patients, OrderType ot) {
-		patients.forEach(patient -> {
-			Context.getOrderService().getAllOrdersByPatient(patient).forEach(order -> {
-				if(order.getOrderType().equals(ot)){
-					order.setVoided(true);
-				}
-			});
-		});
+		patients.forEach(patient -> Context.getOrderService().getAllOrdersByPatient(patient).forEach(order -> {
+			if(order.getOrderType().equals(ot)){
+				order.setVoided(true);
+			}
+		}));
 	}
 
 	private boolean hasActiveOrderOfType(Patient patient, String orderTypeName) {
@@ -176,7 +168,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	 */
 	@Test
 	public void getAllIdentifierValidators_shouldReturnAllRegisteredIdentifierValidators() throws Exception {
-		Collection<IdentifierValidator> expectedValidators = new HashSet<IdentifierValidator>();
+		Collection<IdentifierValidator> expectedValidators = new HashSet<>();
 		expectedValidators.add(patientService.getIdentifierValidator("org.openmrs.patient.impl.LuhnIdentifierValidator"));
 		expectedValidators
 		        .add(patientService.getIdentifierValidator("org.openmrs.patient.impl.VerhoeffIdentifierValidator"));
@@ -265,7 +257,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		patientIdentifier.setLocation(new Location(1));
 		patientIdentifier.setPreferred(true);
 		
-		Set<PatientIdentifier> patientIdentifiers = new LinkedHashSet<PatientIdentifier>();
+		Set<PatientIdentifier> patientIdentifiers = new LinkedHashSet<>();
 		patientIdentifiers.add(patientIdentifier);
 		
 		patient.setIdentifiers(patientIdentifiers);
@@ -453,18 +445,23 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	 * @throws Exception
 	 */
 	@Test
-	@SkipBaseSetup
-	public void shouldGetPatientsByIdentifierAndIdentifierType() throws Exception {
+	public void shouldGetPatientsByIdegntifierAndIdentifierType() throws Exception {
 		initializeInMemoryDatabase();
 		executeDataSet(FIND_PATIENTS_XML);
 		authenticate();
 		updateSearchIndex();
 		
-		List<PatientIdentifierType> types = new Vector<PatientIdentifierType>();
+		List<PatientIdentifierType> types = new ArrayList<>();
 		types.add(new PatientIdentifierType(1));
 		// make sure we get back only one patient
-		List<Patient> patients = patientService.getPatients("1234", null, types, false);
+		List<Patient> patients = patientService.getPatients("4567", null, types, false);
 		assertEquals(1, patients.size());
+		
+		// make sure error cases are found & catched
+		patients = patientService.getPatients("4567", null, null, false);
+		assertTrue(patients.isEmpty());
+		patients = patientService.getPatients("4567", null, null, false, -2, -2);
+		assertTrue(patients.isEmpty());		
 		
 		// make sure we get back only one patient
 		patients = patientService.getPatients("1234", null, null, false);
@@ -473,6 +470,22 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		// make sure we can search a padded identifier
 		patients = patientService.getPatients("00000001234", null, null, false);
 		assertEquals(1, patients.size());
+		patients = patientService.getPatients("123", null, types, false);
+		assertEquals(1, patients.size());
+		patients = patientService.getPatients("123", null, types, true);
+		assertEquals(0, patients.size());
+		patients = patientService.getPatients("123", null, types, false);
+		assertEquals(1, patients.size());		
+		
+		// change to use another identifier type
+		// THESE TWO TESTS CURRENTLY FAIL
+		types = new ArrayList<>();
+		types.add(new PatientIdentifierType(2));
+		patients = patientService.getPatients("1234", null, types, false);
+		assertEquals(0, patients.size());
+		
+		patients = patientService.getPatients(null, "1234", types, false);
+		assertEquals(0, patients.size());
 	}
 	
 	/**
@@ -639,7 +652,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		Visit visit4 = visitService.getVisit(4);
 		Visit visit5 = visitService.getVisit(5);
 		
-		List<String> encounterUuidsThatShouldBeMoved = new ArrayList<String>();
+		List<String> encounterUuidsThatShouldBeMoved = new ArrayList<>();
 		encounterUuidsThatShouldBeMoved.add(Context.getEncounterService().getEncounter(6).getUuid());
 		for (Visit v : Arrays.asList(visit1, visit2, visit3)) {
 			for (Encounter e : v.getEncounters()) {
@@ -1056,7 +1069,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test(expected = InsufficientIdentifiersException.class)
 	public void checkPatientIdentifiers_shouldThrowErrorWhenPatientHasEmptyPatientIdentifiers() throws Exception {
 		Patient patient = new Patient();
-		patient.setIdentifiers(new HashSet<PatientIdentifier>());
+		patient.setIdentifiers(new HashSet<>());
 		Context.getPatientService().checkPatientIdentifiers(patient);
 	}
 	
@@ -1093,7 +1106,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void getAllIdentifierValidators_shouldReturnAllRegisteredPatientIdentifierValidators() throws Exception {
 		
-		Collection<IdentifierValidator> expectedValidators = new HashSet<IdentifierValidator>();
+		Collection<IdentifierValidator> expectedValidators = new HashSet<>();
 		expectedValidators.add(patientService.getIdentifierValidator("org.openmrs.patient.impl.LuhnIdentifierValidator"));
 		expectedValidators
 		        .add(patientService.getIdentifierValidator("org.openmrs.patient.impl.VerhoeffIdentifierValidator"));
@@ -1704,9 +1717,9 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		patientService.mergePatients(preferred, notPreferred);
 		
 		Assert.assertNotNull(nonvoidedPI);
-		Assert.assertTrue(contains(new ArrayList<PatientIdentifier>(preferred.getIdentifiers()), nonvoidedPI.getIdentifier()));
+		Assert.assertTrue(contains(new ArrayList<>(preferred.getIdentifiers()), nonvoidedPI.getIdentifier()));
 		Assert.assertNotNull(voidedPI);
-		Assert.assertFalse(contains(new ArrayList<PatientIdentifier>(preferred.getIdentifiers()), voidedPI.getIdentifier()));
+		Assert.assertFalse(contains(new ArrayList<>(preferred.getIdentifiers()), voidedPI.getIdentifier()));
 	}
 	
 	public static boolean contains(List<PatientIdentifier> list, String identifier) {
@@ -2111,7 +2124,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	public void mergePatients_shouldMergeAllNonPreferredPatientsInTheTheNotPreferredListToPreferredPatient()
 	    throws Exception {
 		Patient preferred = patientService.getPatient(6);
-		List<Patient> notPreferred = new ArrayList<Patient>();
+		List<Patient> notPreferred = new ArrayList<>();
 		notPreferred.add(patientService.getPatient(7));
 		notPreferred.add(patientService.getPatient(8));
 		voidOrders(notPreferred);
@@ -2758,6 +2771,12 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		Assert.assertFalse(patient.getPersonVoided());
 	}
 	
+	@Test
+	public void unvoidPatient_shouldReturnNullWhenPatientIsNull() throws Exception {
+		
+		assertNull(patientService.unvoidPatient(null));
+	}
+	
 	/**
 	 * @see PatientService#unvoidPatient(Patient)
 	 */
@@ -2863,8 +2882,8 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void getAllPatientIdentifierTypes_shouldOrderAsDefaultComparator() throws Exception {
 		List<PatientIdentifierType> list = patientService.getAllPatientIdentifierTypes();
-		List<PatientIdentifierType> sortedList = new ArrayList<PatientIdentifierType>(list);
-		Collections.sort(sortedList, new PatientIdentifierTypeDefaultComparator());
+		List<PatientIdentifierType> sortedList = new ArrayList<>(list);
+		sortedList.sort(new PatientIdentifierTypeDefaultComparator());
 		Assert.assertEquals(sortedList, list);
 	}
 	
@@ -2874,8 +2893,8 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void getPatientIdentifierTypes_shouldOrderAsDefaultComparator() throws Exception {
 		List<PatientIdentifierType> list = patientService.getPatientIdentifierTypes(null, null, false, null);
-		List<PatientIdentifierType> sortedList = new ArrayList<PatientIdentifierType>(list);
-		Collections.sort(sortedList, new PatientIdentifierTypeDefaultComparator());
+		List<PatientIdentifierType> sortedList = new ArrayList<>(list);
+		sortedList.sort(new PatientIdentifierTypeDefaultComparator());
 		Assert.assertEquals(sortedList, list);
 	}
 	
@@ -3050,7 +3069,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldFindAPatientsWithAMatchingIdentifierWithNoDigits() throws Exception {
 		final String identifier = "XYZ";
 		Patient patient = patientService.getPatient(2);
-		Assert.assertEquals(0, patientService.getPatients(identifier, (Integer) null, (Integer) null).size());
+		Assert.assertEquals(0, patientService.getPatients(identifier, null, null).size());
 		PatientIdentifier pId = new PatientIdentifier(identifier, patientService.getPatientIdentifierType(5),
 		        locationService.getLocation(1));
 		patient.addIdentifier(pId);

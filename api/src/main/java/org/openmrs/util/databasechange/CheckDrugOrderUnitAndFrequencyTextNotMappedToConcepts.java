@@ -12,7 +12,7 @@ package org.openmrs.util.databasechange;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.util.DatabaseUtil;
 import org.openmrs.util.UpgradeUtil;
 
@@ -65,7 +65,7 @@ public class CheckDrugOrderUnitAndFrequencyTextNotMappedToConcepts implements Cu
 	}
 	
 	private Set<String> getUnMappedText(Set<String> textList, JdbcConnection connection) {
-		Set<String> unmappedText = new HashSet<String>(textList.size());
+		Set<String> unmappedText = new HashSet<>(textList.size());
 		for (String text : textList) {
 			if (StringUtils.isBlank(text) || UpgradeUtil.getConceptIdForUnits(text) != null) {
 				continue;

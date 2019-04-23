@@ -12,10 +12,12 @@ package org.openmrs.obs.handler;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.io.IOUtils;
 import org.openmrs.Obs;
@@ -39,7 +41,7 @@ public class TextHandler extends AbstractHandler implements ComplexObsHandler {
 	private static final String[] supportedViews = { ComplexObsHandler.TEXT_VIEW, ComplexObsHandler.RAW_VIEW,
 	        ComplexObsHandler.URI_VIEW };
 	
-	public static final Logger log = LoggerFactory.getLogger(TextHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(TextHandler.class);
 	
 	/**
 	 * Constructor initializes formats for alternative file names to protect from unintentionally
@@ -84,7 +86,12 @@ public class TextHandler extends AbstractHandler implements ComplexObsHandler {
 		}
 		
 		Assert.notNull(complexData, "Complex data must not be null");
-		complexData.setMimeType("text/plain");
+		
+		// Get the Mime Type and set it
+		String mimeType = OpenmrsUtil.getFileMimeType(file);
+		mimeType = !(mimeType.equals("application/octet-stream")) ? mimeType : "text/plain";
+		complexData.setMimeType(mimeType);
+		
 		obs.setComplexData(complexData);
 		
 		return obs;
@@ -113,8 +120,8 @@ public class TextHandler extends AbstractHandler implements ComplexObsHandler {
 		BufferedWriter fout = null;
 		try {
 			File outfile = getOutputFileToWrite(obs);
-			fout = new BufferedWriter(new FileWriter(outfile));
-			Reader tempRd = null;
+			fout = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outfile), StandardCharsets.UTF_8));
+			Reader tempRd;
 			Object data = obs.getComplexData().getData();
 			if (data instanceof char[]) {
 				fout.write((char[]) data);

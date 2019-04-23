@@ -10,19 +10,18 @@
 package org.openmrs.api.db.hibernate;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.Query;
 import org.hibernate.SessionFactory;
+import org.hibernate.criterion.MatchMode;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Restrictions;
 import org.openmrs.Person;
@@ -30,6 +29,7 @@ import org.openmrs.Privilege;
 import org.openmrs.Role;
 import org.openmrs.User;
 import org.openmrs.api.context.Context;
+import org.openmrs.api.context.Daemon;
 import org.openmrs.api.db.DAOException;
 import org.openmrs.api.db.LoginCredential;
 import org.openmrs.api.db.UserDAO;
@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HibernateUserDAO implements UserDAO {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(HibernateUserDAO.class);
 	
 	/**
 	 * Hibernate session factory
@@ -109,6 +109,32 @@ public class HibernateUserDAO implements UserDAO {
 	}
 	
 	/**
+	 * @see org.openmrs.api.UserService#getUserByEmail(java.lang.String)
+	 */
+	@Override
+	@SuppressWarnings("unchecked")
+	public User getUserByEmail(String email) {
+		return (User) sessionFactory.getCurrentSession().createCriteria(User.class).add(Restrictions.eq("email", email).ignoreCase()).uniqueResult();	
+	}
+	
+	/**
+	 * @see org.openmrs.api.db.UserDAO#getLoginCredentialByActivationKey(java.lang.String)
+	 */
+	@Override
+	public LoginCredential getLoginCredentialByActivationKey(String activationKey) {
+		String key = Security.encodeString(activationKey);
+		LoginCredential loginCred = (LoginCredential) sessionFactory.getCurrentSession().createCriteria(LoginCredential.class)
+									.add(Restrictions.like("activationKey", key, MatchMode.START)).uniqueResult();	
+		if(loginCred != null) {
+			String[] credTokens = loginCred.getActivationKey().split(":");
+			if(credTokens[0].equals(key)){
+				return loginCred;
+			}
+		}	
+		return null;
+ 	}
+	
+	/**
 	 * @see org.openmrs.api.UserService#hasDuplicateUsername(org.openmrs.User)
 	 */
 	@Override
@@ -121,7 +147,7 @@ public class HibernateUserDAO implements UserDAO {
 		}
 		
 		if (userId == null) {
-			userId = Integer.valueOf(-1);
+			userId = -1;
 		}
 		
 		String usernameWithCheckDigit = username;
@@ -153,9 +179,8 @@ public class HibernateUserDAO implements UserDAO {
 	 */
 	@Override
 	public User getUser(Integer userId) {
-		User user = (User) sessionFactory.getCurrentSession().get(User.class, userId);
-		
-		return user;
+
+		return (User) sessionFactory.getCurrentSession().get(User.class, userId);
 	}
 	
 	/**
@@ -164,7 +189,9 @@ public class HibernateUserDAO implements UserDAO {
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<User> getAllUsers() throws DAOException {
-		return sessionFactory.getCurrentSession().createQuery("from User u order by u.userId").list();
+		return sessionFactory.getCurrentSession().createQuery("from User where not uuid = :daemonUserUuid order by userId")
+				                                                     .setString("daemonUserUuid", Daemon.getDaemonUserUuid()).list();
+		
 	}
 	
 	/**
@@ -180,10 +207,9 @@ public class HibernateUserDAO implements UserDAO {
 	 */
 	@SuppressWarnings("unchecked")
 	public List<User> getUsersByRole(Role role) throws DAOException {
-		List<User> users = sessionFactory.getCurrentSession().createCriteria(User.class, "u").createCriteria("roles", "r")
-		        .add(Restrictions.like("r.role", role.getRole())).addOrder(Order.asc("u.username")).list();
-		
-		return users;
+
+		return (List<User>) sessionFactory.getCurrentSession().createCriteria(User.class, "u").createCriteria("roles", "r")
+		        .add(Restrictions.like("r.role", role.getRole())).add(Restrictions.ne("u.uuid", Daemon.getDaemonUserUuid())).addOrder(Order.asc("u.username")).list();
 		
 	}
 	
@@ -404,7 +430,7 @@ public class HibernateUserDAO implements UserDAO {
 		List<User> returnList = query.list();
 		
 		if (!CollectionUtils.isEmpty(returnList)) {
-			Collections.sort(returnList, new UserByNameComparator());
+			returnList.sort(new UserByNameComparator());
 		}
 		
 		return returnList;
@@ -422,7 +448,7 @@ public class HibernateUserDAO implements UserDAO {
 		
 		Object object = query.uniqueResult();
 		
-		Integer id = null;
+		Integer id;
 		if (object instanceof Number) {
 			id = ((Number) query.uniqueResult()).intValue() + 1;
 		} else {
@@ -439,20 +465,17 @@ public class HibernateUserDAO implements UserDAO {
 	 */
 	@Override
 	public List<User> getUsersByName(String givenName, String familyName, boolean includeRetired) {
-		List<User> users = new Vector<User>();
 		Criteria crit = sessionFactory.getCurrentSession().createCriteria(User.class);
 		crit.createAlias("person", "person");
 		crit.createAlias("person.names", "names");
 		crit.add(Restrictions.eq("names.givenName", givenName));
 		crit.add(Restrictions.eq("names.familyName", familyName));
+		crit.add(Restrictions.ne("uuid", Daemon.getDaemonUserUuid()));
 		crit.setResultTransformer(Criteria.DISTINCT_ROOT_ENTITY);
 		if (!includeRetired) {
 			crit.add(Restrictions.eq("retired", false));
 		}
-		for (User u : (List<User>) crit.list()) {
-			users.add(u);
-		}
-		return users;
+		return new ArrayList<>((List<User>) crit.list());
 	}
 	
 	/**
@@ -525,6 +548,7 @@ public class HibernateUserDAO implements UserDAO {
 	@SuppressWarnings("unchecked")
 	public List<User> getUsersByPerson(Person person, boolean includeRetired) {
 		Criteria crit = sessionFactory.getCurrentSession().createCriteria(User.class);
+		crit.add(Restrictions.ne("uuid", Daemon.getDaemonUserUuid()));
 		if (person != null) {
 			crit.add(Restrictions.eq("person", person));
 		}
@@ -570,9 +594,9 @@ public class HibernateUserDAO implements UserDAO {
 		//	 and role in :roleList 
 		//   and user.retired = false
 		// order by username asc
-		List<String> criteria = new ArrayList<String>();
+		List<String> criteria = new ArrayList<>();
 		int counter = 0;
-		Map<String, String> namesMap = new HashMap<String, String>();
+		Map<String, String> namesMap = new HashMap<>();
 		if (name != null) {
 			name = name.replace(", ", " ");
 			String[] names = name.split(" ");
@@ -601,9 +625,10 @@ public class HibernateUserDAO implements UserDAO {
 			hql.append("inner join user.roles as role ");
 			searchOnRoles = true;
 		}
+		hql.append("where user.uuid != :DAEMON_USER_UUID ");
 		
 		if (!criteria.isEmpty() || searchOnRoles) {
-			hql.append("where ");
+			hql.append("and ");
 		}
 		for (Iterator<String> i = criteria.iterator(); i.hasNext();) {
 			hql.append(i.next()).append(" ");
@@ -621,7 +646,7 @@ public class HibernateUserDAO implements UserDAO {
 		}
 		
 		Query query = sessionFactory.getCurrentSession().createQuery(hql.toString());
-		
+		query.setParameter("DAEMON_USER_UUID", Daemon.getDaemonUserUuid());
 		for (Map.Entry<String, String> e : namesMap.entrySet()) {
 			query.setString(e.getKey(), e.getValue());
 		}
@@ -633,4 +658,11 @@ public class HibernateUserDAO implements UserDAO {
 		return query;
 	}
 	
+	/**
+	 * @see org.openmrs.api.db.UserDAO#createActivationKey(org.openmrs.User)
+	 */
+	@Override
+	public void setUserActivationKey(LoginCredential credentials) {		
+			sessionFactory.getCurrentSession().merge(credentials);	
+	}
 }

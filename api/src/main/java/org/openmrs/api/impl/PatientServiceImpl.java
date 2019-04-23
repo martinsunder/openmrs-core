@@ -9,10 +9,11 @@
  */
 package org.openmrs.api.impl;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Allergen;
 import org.openmrs.Allergies;
 import org.openmrs.Allergy;
+import org.openmrs.BaseOpenmrsMetadata;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.Location;
@@ -70,7 +71,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Vector;
 import java.util.stream.Collectors;
 
 /**
@@ -85,7 +85,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class PatientServiceImpl extends BaseOpenmrsService implements PatientService {
 	
-	private final Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(PatientServiceImpl.class);
 	
 	private PatientDAO dao;
 	
@@ -264,10 +264,6 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	public List<Patient> getPatients(String name, String identifier, List<PatientIdentifierType> identifierTypes,
 	        boolean matchIdentifierExactly) throws APIException {
 		
-		if (identifierTypes == null) {
-			identifierTypes = Collections.emptyList();
-		}
-		
 		return Context.getPatientService().getPatients(name, identifier, identifierTypes, matchIdentifierExactly, 0, null);
 	}
 	
@@ -282,8 +278,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 			throw new InsufficientIdentifiersException("At least one nonvoided Patient Identifier is required");
 		}
 
-		final List<PatientIdentifier> patientIdentifiers = new ArrayList<>();
-		patientIdentifiers.addAll(patient.getIdentifiers());
+		final List<PatientIdentifier> patientIdentifiers = new ArrayList<>(patient.getIdentifiers());
 
 		final Set<String> uniqueIdentifiers = new HashSet<>();
 
@@ -313,14 +308,14 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	private void checkForMissingRequiredIdentifiers(List<PatientIdentifier> patientIdentifiers) {
 		final Set<PatientIdentifierType> patientIdentifierTypes =
 				patientIdentifiers.stream()
-						.map(identifier -> identifier.getIdentifierType())
+						.map(PatientIdentifier::getIdentifierType)
 						.collect(Collectors.toSet());
 
 		final List<PatientIdentifierType> requiredTypes = this.getPatientIdentifierTypes(null, null, true, null);
 		final Set<String> missingRequiredTypeNames =
 				requiredTypes.stream()
 						.filter(requiredType -> !patientIdentifierTypes.contains(requiredType))
-						.map(type -> type.getName())
+						.map(BaseOpenmrsMetadata::getName)
 						.collect(Collectors.toSet());
 
 		if(! missingRequiredTypeNames.isEmpty()) {
@@ -378,15 +373,15 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	        Boolean isPreferred) throws APIException {
 		
 		if (patientIdentifierTypes == null) {
-			patientIdentifierTypes = new Vector<PatientIdentifierType>();
+			patientIdentifierTypes = new ArrayList<>();
 		}
 		
 		if (locations == null) {
-			locations = new Vector<Location>();
+			locations = new ArrayList<>();
 		}
 		
 		if (patients == null) {
-			patients = new Vector<Patient>();
+			patients = new ArrayList<>();
 		}
 		
 		return dao.getPatientIdentifiers(identifier, patientIdentifierTypes, locations, patients, isPreferred);
@@ -622,17 +617,15 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 		String messageKey = "Patient.merge.cannotHaveSameTypeActiveOrders";
 		List<Order> ordersByPatient1 = Context.getOrderService().getAllOrdersByPatient(patient1);
 		List<Order> ordersByPatient2 = Context.getOrderService().getAllOrdersByPatient(patient2);
-		ordersByPatient1.forEach((Order order1) -> {
-			ordersByPatient2.forEach((Order order2) -> {
-				if (order1.isActive() && order2.isActive() && order1.getOrderType().equals(order2.getOrderType())) {
-					Object[] parameters = { patient1.getPatientId(), patient2.getPatientId(), order1.getOrderType() };
-					String message = Context.getMessageSourceService().getMessage(messageKey, parameters,
-							Context.getLocale());
-					log.debug(message);
-					throw new APIException(message);
-				}
-			});
-		});
+		ordersByPatient1.forEach((Order order1) -> ordersByPatient2.forEach((Order order2) -> {
+			if (order1.isActive() && order2.isActive() && order1.getOrderType().equals(order2.getOrderType())) {
+				Object[] parameters = { patient1.getPatientId(), patient2.getPatientId(), order1.getOrderType() };
+				String message = Context.getMessageSourceService().getMessage(messageKey, parameters,
+						Context.getLocale());
+				log.debug(message);
+				throw new APIException(message);
+			}
+		}));
 	}
 
 	private void mergeProgramEnrolments(Patient preferred, Patient notPreferred, PersonMergeLogData mergedData) {
@@ -685,7 +678,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	private void mergeRelationships(Patient preferred, Patient notPreferred, PersonMergeLogData mergedData) {
 		// copy all relationships
 		PersonService personService = Context.getPersonService();
-		Set<String> existingRelationships = new HashSet<String>();
+		Set<String> existingRelationships = new HashSet<>();
 		// fill in the existing relationships with hashes
 		for (Relationship rel : personService.getRelationshipsByPerson(preferred)) {
 			existingRelationships.add(relationshipHash(rel, preferred));
@@ -1030,7 +1023,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 				if (obssExit.size() > 1) {
 					log.error("Multiple reasons for exit (" + obssExit.size() + ")?  Shouldn't be...");
 				} else {
-					Obs obsExit = null;
+					Obs obsExit;
 					if (obssExit.size() == 1) {
 						// already has a reason for exit - let's edit it.
 						log.debug("Already has a reason for exit, so changing it");
@@ -1152,7 +1145,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 				if (obssDeath.size() > 1) {
 					log.error("Multiple causes of death (" + obssDeath.size() + ")?  Shouldn't be...");
 				} else {
-					Obs obsDeath = null;
+					Obs obsDeath;
 					if (obssDeath.size() == 1) {
 						// already has a cause of death - let's edit it.
 						log.debug("Already has a cause of death, so changing it");
@@ -1277,7 +1270,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	
 	public Map<Class<? extends IdentifierValidator>, IdentifierValidator> getIdentifierValidators() {
 		if (identifierValidators == null) {
-			identifierValidators = new LinkedHashMap<Class<? extends IdentifierValidator>, IdentifierValidator>();
+			identifierValidators = new LinkedHashMap<>();
 		}
 		return identifierValidators;
 	}
@@ -1594,7 +1587,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	@Override
 	@Transactional(readOnly = true)
 	public List<Patient> getPatients(String query, Integer start, Integer length) throws APIException {
-		List<Patient> patients = new Vector<Patient>();
+		List<Patient> patients = new ArrayList<>();
 		if (StringUtils.isBlank(query)) {
 			return patients;
 		}
@@ -1623,11 +1616,13 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	@Transactional(readOnly = true)
 	public List<Patient> getPatients(String name, String identifier, List<PatientIdentifierType> identifierTypes,
 	        boolean matchIdentifierExactly, Integer start, Integer length) throws APIException {
-		if (identifierTypes == null) {
-			identifierTypes = Collections.emptyList();
-		}
 		
-		return dao.getPatients(name != null ? name : identifier, start, length);
+		if(identifierTypes == null) {
+			return dao.getPatients(name != null ? name : identifier, start, length);
+		}
+		else {
+			return dao.getPatients(name != null ? name : identifier, identifierTypes, matchIdentifierExactly, start, length);
+		}
 	}
 	
 	/**

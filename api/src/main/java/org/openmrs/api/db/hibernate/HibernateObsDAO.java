@@ -13,7 +13,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.FlushMode;
 import org.hibernate.SQLQuery;
@@ -36,8 +36,6 @@ import org.openmrs.User;
 import org.openmrs.api.db.DAOException;
 import org.openmrs.api.db.ObsDAO;
 import org.openmrs.util.OpenmrsConstants.PERSON_TYPE;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Hibernate specific Observation related functions This class should not be used directly. All
@@ -47,8 +45,6 @@ import org.slf4j.LoggerFactory;
  * @see org.openmrs.api.ObsService
  */
 public class HibernateObsDAO implements ObsDAO {
-	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
 	
 	protected SessionFactory sessionFactory;
 	
@@ -245,10 +241,6 @@ public class HibernateObsDAO implements ObsDAO {
 		if (personTypes.contains(PERSON_TYPE.USER)) {
 			DetachedCriteria crit = DetachedCriteria.forClass(User.class, "user").setProjection(Property.forName("userId"));
 			criteria.add(Subqueries.propertyIn("person.personId", crit));
-		}
-		
-		if (personTypes.contains(PERSON_TYPE.PERSON)) {
-			// all observations are already on person's.  Limit to non-patient and non-users here?
 		}
 		
 		return criteria;

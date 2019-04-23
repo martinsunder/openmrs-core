@@ -16,10 +16,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Cohort;
 import org.openmrs.Encounter;
 import org.openmrs.EncounterRole;
@@ -95,39 +94,13 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 	public Encounter saveEncounter(Encounter encounter) throws APIException {
 		
 		// if authenticated user is not supposed to edit encounter of certain type
-		if (!canEditEncounter(encounter, null)) {
-			throw new APIException("Encounter.error.privilege.required.edit", new Object[] { encounter.getEncounterType()
-			        .getEditPrivilege() });
-		}
+		failIfDeniedToEdit(encounter);
 		
 		//If new encounter, try to assign a visit using the registered visit assignment handler.
-		if (encounter.getEncounterId() == null) {
-			
-			//Am using Context.getEncounterService().getActiveEncounterVisitHandler() instead of just
-			//getActiveEncounterVisitHandler() for modules which may want to AOP around this call.
-			EncounterVisitHandler encounterVisitHandler = Context.getEncounterService().getActiveEncounterVisitHandler();
-			if (encounterVisitHandler != null) {
-				encounterVisitHandler.beforeCreateEncounter(encounter);
-				
-				//If we have been assigned a new visit, persist it.
-				if (encounter.getVisit() != null && encounter.getVisit().getVisitId() == null) {
-					Context.getVisitService().saveVisit(encounter.getVisit());
-				}
-			}
-		}
+		createVisitForNewEncounter(encounter);
 		
-		boolean isNewEncounter = false;
-		Date newDate = encounter.getEncounterDatetime();
-		Date originalDate = null;
-		Location newLocation = encounter.getLocation();
-		Location originalLocation = null;
 		// check permissions
-		if (encounter.getEncounterId() == null) {
-			isNewEncounter = true;
-			Context.requirePrivilege(PrivilegeConstants.ADD_ENCOUNTERS);
-		} else {
-			Context.requirePrivilege(PrivilegeConstants.EDIT_ENCOUNTERS);
-		}
+		boolean isNewEncounter = requirePrivilege(encounter);
 		
 		// This must be done after setting dateCreated etc on the obs because
 		// of the way the ORM tools flush things and check for nullity
@@ -135,6 +108,8 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 		// orig date
 		// after the save
 		Patient p = encounter.getPatient();
+		Date originalDate;
+		Location originalLocation = null;
 		
 		if (!isNewEncounter) {
 			// fetch the datetime from the database prior to saving for this
@@ -155,6 +130,8 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 			// to Obs that inherited their obsDatetime from the encounter in the
 			// first place
 			
+			Date newDate = encounter.getEncounterDatetime();
+			Location newLocation = encounter.getLocation();
 			for (Obs obs : encounter.getAllObs(true)) {
 				// if the date was changed
 				if (OpenmrsUtil.compare(originalDate, newDate) != 0
@@ -220,6 +197,57 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 		removeGivenObsAndTheirGroupMembersFromEncounter(obsToRemove, encounter);
 		addGivenObsAndTheirGroupMembersToEncounter(obsToAdd, encounter);
 		return encounter;
+	}
+	
+	/**
+	 * This method safely checks if authenticated user is not supposed to edit encounter of certain type
+	 * 
+	 * @param encounter encounter which is to be edited
+	 * @throws APIException if not allowed to edit encounter
+	 */
+	private void failIfDeniedToEdit(Encounter encounter) throws APIException {
+		if (!canEditEncounter(encounter, null)) {
+			throw new APIException("Encounter.error.privilege.required.edit", new Object[] { encounter.getEncounterType()
+			        .getEditPrivilege() });
+		}
+	}
+	
+	/**
+	 * This method assigns a visit to a new encounter using the registered visit assignment handler
+	 * 
+	 * @param encounter a new encounter
+	 */
+	private void createVisitForNewEncounter(Encounter encounter) {
+		if (encounter.getEncounterId() == null) {
+			
+			//Am using Context.getEncounterService().getActiveEncounterVisitHandler() instead of just
+			//getActiveEncounterVisitHandler() for modules which may want to AOP around this call.
+			EncounterVisitHandler encounterVisitHandler = Context.getEncounterService().getActiveEncounterVisitHandler();
+			if (encounterVisitHandler != null) {
+				encounterVisitHandler.beforeCreateEncounter(encounter);
+				
+				//If we have been assigned a new visit, persist it.
+				if (encounter.getVisit() != null && encounter.getVisit().getVisitId() == null) {
+					Context.getVisitService().saveVisit(encounter.getVisit());
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Checks for the type of privilege required
+	 * 
+	 * @param encounter which is to be edited
+	 */
+	private boolean requirePrivilege(Encounter encounter) {
+		boolean isNewEncounter = false;
+		if (encounter.getEncounterId() == null) {
+			isNewEncounter = true;
+			Context.requirePrivilege(PrivilegeConstants.ADD_ENCOUNTERS);
+		} else {
+			Context.requirePrivilege(PrivilegeConstants.EDIT_ENCOUNTERS);
+		}
+		return isNewEncounter;
 	}
 
 	/**
@@ -320,7 +348,7 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 			throw new IllegalArgumentException("The 'identifier' parameter is required and cannot be null");
 		}
 		
-		List<Encounter> encs = new Vector<Encounter>();
+		List<Encounter> encs = new ArrayList<>();
 		for (Patient p : Context.getPatientService().getPatients(identifier, null, null, false)) {
 			encs.addAll(Context.getEncounterService().getEncountersByPatientId(p.getPatientId()));
 		}
@@ -468,11 +496,11 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 		
 		if (cascade) {
 			ObsService obsService = Context.getObsService();
-			List<Encounter> justThisEncounter = new ArrayList<Encounter>();
+			List<Encounter> justThisEncounter = new ArrayList<>();
 			justThisEncounter.add(encounter);
-			List<Obs> observations = new Vector<Obs>();
-			observations.addAll(obsService.getObservations(null, justThisEncounter, null, null, null, null, null, null,
-			    null, null, null, true));
+			List<Obs> observations = new ArrayList<>(
+					obsService.getObservations(null, justThisEncounter, null, null, null, null, null, null,
+							null, null, null, true));
 			for (Obs o : observations) {
 				obsService.purgeObs(o);
 			}
@@ -653,9 +681,8 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 	@Override
 	@Transactional(readOnly = true)
 	public List<EncounterVisitHandler> getEncounterVisitHandlers() {
-		List<EncounterVisitHandler> handlers = HandlerUtil.getHandlersForType(EncounterVisitHandler.class, null);
-		
-		return handlers;
+
+		return HandlerUtil.getHandlersForType(EncounterVisitHandler.class, null);
 	}
 	
 	/**
@@ -672,7 +699,7 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 			return null;
 		}
 		
-		EncounterVisitHandler handler = null;
+		EncounterVisitHandler handler;
 		
 		// convention = [NamePrefix:beanName] or [className]
 		String namePrefix = OpenmrsConstants.REGISTERED_COMPONENT_NAME_PREFIX;

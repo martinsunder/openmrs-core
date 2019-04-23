@@ -9,10 +9,16 @@
  */
 package org.openmrs.api.context;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.openmrs.Role;
 import org.openmrs.User;
 import org.openmrs.api.APIAuthenticationException;
 import org.openmrs.api.APIException;
 import org.openmrs.api.OpenmrsService;
+import org.openmrs.api.db.ContextDAO;
 import org.openmrs.module.DaemonToken;
 import org.openmrs.module.Module;
 import org.openmrs.module.ModuleException;
@@ -29,17 +35,17 @@ import org.springframework.context.support.AbstractRefreshableApplicationContext
  * module startup when there is no user to authenticate as.
  */
 public class Daemon {
-	
-	protected static final Logger log = LoggerFactory.getLogger(Daemon.class);
+
+	private static final Logger log = LoggerFactory.getLogger(Daemon.class);
 	
 	/**
 	 * The uuid defined for the daemon user object
 	 */
 	protected static final String DAEMON_USER_UUID = "A4F30A1B-5EB9-11DF-A648-37A07F9C90FB";
 	
-	protected static final ThreadLocal<Boolean> isDaemonThread = new ThreadLocal<Boolean>();
+	protected static final ThreadLocal<Boolean> isDaemonThread = new ThreadLocal<>();
 	
-	protected static final ThreadLocal<User> daemonThreadUser = new ThreadLocal<User>();
+	protected static final ThreadLocal<User> daemonThreadUser = new ThreadLocal<>();
 	
 	/**
 	 * @see #startModule(Module, boolean, AbstractRefreshableApplicationContext)
@@ -99,11 +105,76 @@ public class Daemon {
 				throw new ModuleException("Unable to start module as Daemon", startModuleThread.exceptionThrown);
 			}
 		}
-		
-		Module startedModule = (Module) startModuleThread.returnedObject;
-		
-		return startedModule;
+
+		return (Module) startModuleThread.returnedObject;
 	}
+
+	/**
+	 * This method should not be called directly, only {@link ContextDAO#createUser(User, String)} can
+	 * legally invoke {@link #createUser(User, String)}.
+	 * 
+	 * @param user A new user to be created.
+	 * @param password The password to set for the new user.
+	 * @param roleNames A list of role names to fetch the roles to add to the user.
+	 * @return The newly created user
+	 * 
+	 * @should only allow the creation of new users, not the edition of existing ones
+	 * 
+	 * @since 2.3.0
+	 */
+	public static User createUser(User user, String password, List<String> roleNames) throws Exception {
+
+		// quick check to make sure we're only being called by ourselves
+		Class<?> callerClass = new OpenmrsSecurityManager().getCallerClass(0);
+		if (!ContextDAO.class.isAssignableFrom(callerClass)) {
+			throw new APIException("Context.DAO.only", new Object[] { callerClass.getName() });
+		}
+
+		// create a new thread and execute that task in it
+		DaemonThread createUserThread = new DaemonThread() {
+
+			@Override
+			public void run() {
+				isDaemonThread.set(true);
+				try {
+					Context.openSession();
+
+					if ( (user.getId() != null && Context.getUserService().getUser(user.getId()) != null) || Context.getUserService().getUserByUuid(user.getUuid()) != null || Context.getUserService().getUserByUsername(user.getUsername()) != null || (user.getEmail() != null && Context.getUserService().getUserByUsernameOrEmail(user.getEmail()) != null) ) {
+						throw new APIException("User.creating.already.exists", new Object[] { user.getDisplayString() });
+					}
+
+					if (!CollectionUtils.isEmpty(roleNames)) {
+						List<Role> roles = roleNames.stream().map(roleName -> Context.getUserService().getRole(roleName)).collect(Collectors.toList()); 
+						roles.forEach(role -> user.addRole(role));
+					}
+
+					returnedObject = Context.getUserService().createUser(user, password);
+				}
+				catch (Exception e) {
+					exceptionThrown = e;
+				}
+				finally {
+					Context.closeSession();
+				}
+			}
+		};
+
+		createUserThread.start();
+
+		// wait for the 'create user' thread to finish
+		try {
+			createUserThread.join();
+		}
+		catch (InterruptedException e) {
+			// ignore
+		}
+
+		if (createUserThread.exceptionThrown != null) {
+			throw createUserThread.exceptionThrown;
+		}
+
+		return (User) createUserThread.returnedObject;
+	}	
 	
 	/**
 	 * Executes the given task in a new thread that is authenticated as the daemon user. <br>
@@ -208,7 +279,7 @@ public class Daemon {
 		if (b == null) {
 			return false;
 		} else {
-			return b.booleanValue();
+			return b;
 		}
 	}
 	
@@ -370,5 +441,9 @@ public class Daemon {
 		} else {
 			return null;
 		}
+	}
+
+	public static String getDaemonUserUuid() {
+		return DAEMON_USER_UUID;
 	}
 }

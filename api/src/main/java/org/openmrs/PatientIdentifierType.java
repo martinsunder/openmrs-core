@@ -9,13 +9,14 @@
  */
 package org.openmrs;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.hibernate.search.annotations.DocumentId;
 import org.hibernate.search.annotations.Field;
 
 /**
  * PatientIdentifierType
  */
-public class PatientIdentifierType extends BaseOpenmrsMetadata {
+public class PatientIdentifierType extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 211231L;
 	
@@ -56,7 +57,8 @@ public class PatientIdentifierType extends BaseOpenmrsMetadata {
 		LOCATION
 	}
 	
-	// Fields	
+	// Fields
+	@DocumentId
 	private Integer patientIdentifierTypeId;
 	
 	private String format;

@@ -13,7 +13,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.PersonAddress;
 import org.openmrs.annotation.Handler;
 import org.openmrs.api.context.Context;
@@ -32,7 +32,7 @@ import org.springframework.validation.Validator;
 @Handler(supports = { PersonAddress.class }, order = 50)
 public class PersonAddressValidator implements Validator {
 	
-	private static Logger log = LoggerFactory.getLogger(PersonAddressValidator.class);
+	private static final Logger log = LoggerFactory.getLogger(PersonAddressValidator.class);
 	
 	/**
 	 * @see org.springframework.validation.Validator#supports(java.lang.Class)
@@ -70,7 +70,7 @@ public class PersonAddressValidator implements Validator {
 		PersonAddress personAddress = (PersonAddress) object;
 		
 		//resolve a shorter name to display along with the error message
-		String addressString = null;
+		String addressString;
 		if (StringUtils.isNotBlank(personAddress.getAddress1())) {
 			addressString = personAddress.getAddress1();
 		} else if (StringUtils.isNotBlank(personAddress.getAddress2())) {

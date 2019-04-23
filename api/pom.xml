@@ -13,7 +13,7 @@
    <parent>
       <groupId>org.openmrs</groupId>
       <artifactId>openmrs</artifactId>
-      <version>2.2.0-SNAPSHOT</version>
+      <version>2.3.0-SNAPSHOT</version>
    </parent>
    <modelVersion>4.0.0</modelVersion>
    <groupId>org.openmrs.api</groupId>
@@ -38,6 +38,10 @@
       <dependency>
          <groupId>commons-beanutils</groupId>
          <artifactId>commons-beanutils</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>commons-validator</groupId>
+         <artifactId>commons-validator</artifactId>
       </dependency>
       <dependency>
          <groupId>commons-io</groupId>
@@ -96,6 +100,14 @@
          		<groupId>xml-apis</groupId>
          	</exclusion>
          </exclusions>
+      </dependency>
+      <dependency>
+         <groupId>ca.uhn.hapi</groupId>
+         <artifactId>hapi-structures-v23</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>ca.uhn.hapi</groupId>
+         <artifactId>hapi-structures-v24</artifactId>
       </dependency>
       <dependency>
          <groupId>ca.uhn.hapi</groupId>
@@ -205,6 +217,18 @@
            <groupId>org.codehaus.jackson</groupId>
            <artifactId>jackson-mapper-asl</artifactId>
        </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-core</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-annotations</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-databind</artifactId>
+      </dependency>
        <dependency>
 		   <groupId>org.codehaus.groovy</groupId>
 		   <artifactId>groovy-all</artifactId>
@@ -268,15 +292,6 @@
             </configuration>
          </plugin>
          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>antlr-maven-plugin</artifactId>
-            <version>2.1</version>
-            <configuration>
-               <outputDirectory>src/main/java</outputDirectory>
-               <grammars>ArdenRecognizer.g</grammars>
-            </configuration>
-         </plugin>
-         <plugin>
             <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
             <artifactId>maven-java-formatter-plugin</artifactId>
             <executions>
@@ -289,8 +304,15 @@
          </plugin>
 		 <plugin>
 				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
+				<artifactId>jacoco-maven-plugin</artifactId>                          
 		 </plugin>
+		  <plugin>
+			  <groupId>com.mycila</groupId>
+			  <artifactId>license-maven-plugin</artifactId>
+			  <configuration>
+				  <header>${project.parent.basedir}/license-header.txt</header>
+			  </configuration>
+		  </plugin>
       </plugins>
    </build>
    
@@ -312,8 +334,4 @@
 			</build>
 		</profile>
 	</profiles>
-	
-	<properties>
-		<sonar.exclusions>src/main/java/org/openmrs/arden/**/*</sonar.exclusions>
-	</properties>
 </project>

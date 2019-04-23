@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
@@ -151,7 +151,7 @@ public class DatabaseUpgradeTestUtil {
 	
 	public void executeDataset(String path) throws IOException, SQLException {
 		InputStream inputStream = getClass().getResourceAsStream(path);
-		ReplacementDataSet replacementDataSet = null;
+		ReplacementDataSet replacementDataSet;
 		try {
 			replacementDataSet = new ReplacementDataSet(new FlatXmlDataSet(new InputStreamReader(inputStream), false, true,
 			        false));
@@ -187,9 +187,9 @@ public class DatabaseUpgradeTestUtil {
 		PreparedStatement query = connection.prepareStatement(sql);
 		ResultSet resultSet = query.executeQuery();
 		
-		List<Map<String, String>> results = new ArrayList<Map<String, String>>();
+		List<Map<String, String>> results = new ArrayList<>();
 		while (resultSet.next()) {
-			Map<String, String> columns = new HashMap<String, String>();
+			Map<String, String> columns = new HashMap<>();
 			results.add(columns);
 			
 			for (int i = 0; i < allColumnNames.length; i++) {

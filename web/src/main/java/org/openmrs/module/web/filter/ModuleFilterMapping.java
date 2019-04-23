@@ -12,11 +12,9 @@ package org.openmrs.module.web.filter;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 import org.openmrs.module.Module;
 import org.openmrs.module.ModuleException;
-import org.openmrs.module.web.WebModuleUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
@@ -30,16 +28,16 @@ public class ModuleFilterMapping implements Serializable {
 	
 	public static final long serialVersionUID = 1;
 	
-	private static Logger log = LoggerFactory.getLogger(WebModuleUtil.class);
+	private static final Logger log = LoggerFactory.getLogger(ModuleFilterMapping.class);
 	
 	// Properties
 	private Module module;
 	
 	private String filterName;
 	
-	private List<String> servletNames = new ArrayList<String>();
+	private List<String> servletNames = new ArrayList<>();
 	
-	private List<String> urlPatterns = new ArrayList<String>();
+	private List<String> urlPatterns = new ArrayList<>();
 	
 	/**
 	 * Default constructor, requires a Module
@@ -198,11 +196,7 @@ public class ModuleFilterMapping implements Serializable {
 		if (patternToCheck.endsWith("/*")) {
 			int patternLength = patternToCheck.length() - 2;
 			if (patternToCheck.regionMatches(0, requestPath, 0, patternLength)) {
-				if (requestPath.length() == patternLength) {
-					return true;
-				} else if ('/' == requestPath.charAt(patternLength)) {
-					return true;
-				}
+				return requestPath.length() == patternLength || '/' == requestPath.charAt(patternLength);
 			}
 			return false;
 		}
@@ -244,12 +238,9 @@ public class ModuleFilterMapping implements Serializable {
 		log.debug("Checking servlet <" + servletName + "> against pattern <" + patternToCheck + ">");
 		
 		// Match exact or full wildcard
-		if (("*").equals(patternToCheck) || servletName.equals(patternToCheck)) {
-			return true;
-		}
+		return ("*").equals(patternToCheck) || servletName.equals(patternToCheck);
 		
 		// If none found, return false
-		return false;
 	}
 	
 	/**
@@ -273,9 +264,9 @@ public class ModuleFilterMapping implements Serializable {
 	 * @return - a List of {@link ModuleFilterMapping}s that are defined for the passed
 	 *         {@link Module}
 	 */
-	public static List<ModuleFilterMapping> retrieveFilterMappings(Module module) throws ModuleException {
+	public static List<ModuleFilterMapping> retrieveFilterMappings(Module module){
 		
-		List<ModuleFilterMapping> mappings = new Vector<ModuleFilterMapping>();
+		List<ModuleFilterMapping> mappings = new ArrayList<>();
 		
 		try {
 			Element rootNode = module.getConfig().getDocumentElement();

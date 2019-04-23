@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,7 @@ import org.openmrs.api.handler.VoidHandler;
  * @see Obs
  * @see Order
  */
-public class Encounter extends BaseOpenmrsData {
+public class Encounter extends BaseChangeableOpenmrsData {
 	
 	public static final long serialVersionUID = 2L;
 	
@@ -54,7 +53,9 @@ public class Encounter extends BaseOpenmrsData {
 	private EncounterType encounterType;
 	
 	private Set<Order> orders;
-	
+
+	private Set<Diagnosis> diagnoses;
+
 	@AllowDirectAccess
 	private Set<Obs> obs;
 	
@@ -385,6 +386,26 @@ public class Encounter extends BaseOpenmrsData {
 	public void setPatient(Patient patient) {
 		this.patient = patient;
 	}
+
+	/**
+	 * Gets the set of diagnoses
+	 * @return diagnoses - the set of diagnoses.
+	 * 
+	 *  @since 2.2
+	 */
+	public Set<Diagnosis> getDiagnoses() {
+		return diagnoses;
+	}
+
+	/**
+	 * Sets a set of diagnoses for the current Encounter
+	 * @param diagnoses the set of Diagnosis to set.
+	 * 
+	 * @since 2.2   
+	 */
+	public void setDiagnoses(Set<Diagnosis> diagnoses) {
+		this.diagnoses = diagnoses;
+	}
 	
 	/**
 	 * Basic property accessor for encounterProviders. The convenience methods getProvidersByRoles
@@ -562,7 +583,7 @@ public class Encounter extends BaseOpenmrsData {
 		
 		return encounterProviders.stream()
 				.filter(ep -> ep.getEncounterRole().equals(role) && (includeVoided || !ep.getVoided()))
-				.map(ep -> ep.getProvider())
+				.map(EncounterProvider::getProvider)
 				.collect(Collectors.toSet());
 	}
 	
@@ -606,8 +627,7 @@ public class Encounter extends BaseOpenmrsData {
 	 */
 	public void setProvider(EncounterRole role, Provider provider) {
 		boolean hasProvider = false;
-		for (Iterator<EncounterProvider> it = encounterProviders.iterator(); it.hasNext();) {
-			EncounterProvider encounterProvider = it.next();
+		for (EncounterProvider encounterProvider : encounterProviders) {
 			if (encounterProvider.getEncounterRole().equals(role)) {
 				if (!encounterProvider.getProvider().equals(provider)) {
 					encounterProvider.setVoided(true);
@@ -700,15 +720,11 @@ public class Encounter extends BaseOpenmrsData {
 		Map<String, OrderGroup> orderGroups = new HashMap<>();
 		for (Order order : orders) {
 			if (order.getOrderGroup() != null) {
-				if (null == orderGroups.get(order.getOrderGroup().getUuid())) {
-					orderGroups.put(order.getOrderGroup().getUuid(), order.getOrderGroup());
-				}
+				orderGroups.computeIfAbsent(order.getOrderGroup().getUuid(), k -> order.getOrderGroup());
 				order.getOrderGroup().addOrder(order, null);
 			}
 		}
-		List<OrderGroup> orderGroupList = new ArrayList<>();
-		orderGroupList.addAll(orderGroups.values());
-		return orderGroupList;
+		return new ArrayList<>(orderGroups.values());
 	}
 	
 	/**
@@ -721,5 +737,23 @@ public class Encounter extends BaseOpenmrsData {
 		return orders.stream()
 				.filter(o -> o.getOrderGroup() == null)
 				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Check if encounter has a particular diagnosis
+	 *
+	 * @since 2.2
+	 * 
+	 * @param diagnosis the diagnosis to check if it belongs to this given encounter
+	 *                     
+	 * @return true if this encounter has the given diagnosis, else false
+	 */
+	public Boolean hasDiagnosis(Diagnosis diagnosis) {
+		for (Diagnosis diagnosis1 : getDiagnoses()) {
+			if (diagnosis.equals(diagnosis1)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

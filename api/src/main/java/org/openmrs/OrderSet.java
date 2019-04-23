@@ -20,7 +20,7 @@ import org.openmrs.api.APIException;
  * 
  * @since 1.12
  */
-public class OrderSet extends BaseOpenmrsMetadata {
+public class OrderSet extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 72232L;
 	
@@ -83,7 +83,7 @@ public class OrderSet extends BaseOpenmrsMetadata {
 	 */
 	public List<OrderSetMember> getOrderSetMembers() {
 		if (orderSetMembers == null) {
-			orderSetMembers = new ArrayList<OrderSetMember>();
+			orderSetMembers = new ArrayList<>();
 		}
 		return orderSetMembers;
 	}
@@ -150,7 +150,7 @@ public class OrderSet extends BaseOpenmrsMetadata {
 	 * @return the orderSetMembers that are not retired
 	 */
 	public List<OrderSetMember> getUnRetiredOrderSetMembers() {
-		List<OrderSetMember> osm = new ArrayList<OrderSetMember>();
+		List<OrderSetMember> osm = new ArrayList<>();
 		for (OrderSetMember orderSetMember : getOrderSetMembers()) {
 			if (!orderSetMember.getRetired()) {
 				osm.add(orderSetMember);

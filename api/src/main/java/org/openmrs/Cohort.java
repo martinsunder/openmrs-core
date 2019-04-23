@@ -9,6 +9,8 @@
  */
 package org.openmrs;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -16,12 +18,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
-
 /**
  * This class represents a list of patientIds.
  */
-public class Cohort extends BaseOpenmrsData {
+public class Cohort extends BaseChangeableOpenmrsData {
 	
 	public static final long serialVersionUID = 0L;
 	
@@ -34,7 +34,7 @@ public class Cohort extends BaseOpenmrsData {
 	private Collection<CohortMembership> memberships;
 	
 	public Cohort() {
-		memberships = new TreeSet<CohortMembership>();
+		memberships = new TreeSet<>();
 	}
 	
 	/**
@@ -61,7 +61,7 @@ public class Cohort extends BaseOpenmrsData {
 		this.name = name;
 		this.description = description;
 		if (ids != null) {
-			Arrays.stream(ids).forEach(id -> addMember(id));
+			Arrays.stream(ids).forEach(this::addMember);
 		}
 	}
 	
@@ -137,7 +137,7 @@ public class Cohort extends BaseOpenmrsData {
 	
 	public boolean contains(Integer patientId) {
 		return getMemberships() != null
-		        && getMemberships().stream().anyMatch(m -> m.getPatientId().equals(patientId) && m.isActive());
+		        && getMemberships().stream().anyMatch(m -> m.getPatientId().equals(patientId) && !m.getVoided());
 	}
 	
 	@Override
@@ -152,15 +152,15 @@ public class Cohort extends BaseOpenmrsData {
 		return sb.toString();
 	}
 	
-	public boolean addMember(Integer memberId) {
-		return this.addMembership(new CohortMembership(memberId));
+	public void addMember(Integer memberId) {
+		this.addMembership(new CohortMembership(memberId));
 	}
 	
 	/**
 	 * @since 2.1.0
 	 */
 	public boolean addMembership(CohortMembership cohortMembership) {
-		if (cohortMembership != null && !this.contains(cohortMembership.getPatientId())) {
+		if (cohortMembership != null) {
 			cohortMembership.setCohort(this);
 			return getMemberships().add(cohortMembership);
 		}
@@ -191,7 +191,7 @@ public class Cohort extends BaseOpenmrsData {
 	 */
 	public Collection<CohortMembership> getMemberships() {
 		if (memberships == null) {
-			memberships = new TreeSet<CohortMembership>();
+			memberships = new TreeSet<>();
 		}
 		return memberships;
 	}
@@ -213,12 +213,11 @@ public class Cohort extends BaseOpenmrsData {
 	 * @since 2.1.0
 	 */
 	public CohortMembership getActiveMembership(Patient patient) {
-		return getMemberships().stream().filter(m -> m.isActive() && m.getPatientId().equals(patient.getPatientId()))
-		        .collect(Collectors.toList()).get(0);
+		return getMemberships().stream().filter(m -> m.isActive() && m.getPatientId().equals(patient.getPatientId())).findFirst().get();
 	}
 	
 	public int size() {
-		return getMemberships().stream().filter(m -> !m.getVoided() && m.getEndDate() == null).collect(Collectors.toList())
+		return getMemberships().stream().filter(m -> !m.getVoided()).collect(Collectors.toList())
 		        .size();
 	}
 	
@@ -324,7 +323,7 @@ public class Cohort extends BaseOpenmrsData {
 	 */
 	@Deprecated
 	public Set<Integer> getMemberIds() {
-		Set<Integer> memberIds = new TreeSet<Integer>();
+		Set<Integer> memberIds = new TreeSet<>();
 		for (CohortMembership member : getMemberships()) {
 			memberIds.add(member.getPatientId());
 		}
@@ -337,7 +336,7 @@ public class Cohort extends BaseOpenmrsData {
 	 */
 	@Deprecated
 	public void setMemberIds(Set<Integer> memberIds) {
-		if (getMemberships().size() == 0) {
+		if (getMemberships().isEmpty()) {
 			for (Integer id : memberIds) {
 				addMembership(new CohortMembership(id));
 			}
@@ -369,5 +368,39 @@ public class Cohort extends BaseOpenmrsData {
 	public void setId(Integer id) {
 		setCohortId(id);
 		
+	}
+	
+	/**
+	 * @since 2.3
+	 * 
+	 * This function checks if there exists any active CohortMembership for a given patientId
+	 * 
+	 * @param patientId is the patientid that should be checked for activity in cohort
+	 * @return true if cohort has active membership for the requested patient             
+	 */
+	public boolean hasActiveMembership(int patientId) {
+		return getMemberships().stream().anyMatch(m  -> m.getPatientId() == patientId && m.isActive());
+	}
+	
+	/**
+	 * 
+	 * @since  2.3
+	 * This method returns the number of active members in the cohort
+	 * 
+	 * @return  number of active memberships in the cohort
+	 */
+	public int activeMembershipSize() {
+		return getActiveMemberships().size();
+	}
+	
+	/**
+	 *
+	 * @since  2.3
+	 * This method returns true if cohort has no active memberships
+	 *
+	 * @return true if no active cohort exists
+	 **/
+	public boolean hasNoActiveMemberships() {
+		return getActiveMemberships().isEmpty();
 	}
 }

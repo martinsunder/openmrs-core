@@ -32,6 +32,7 @@ import org.openmrs.Patient;
 import org.openmrs.PatientProgram;
 import org.openmrs.PatientState;
 import org.openmrs.Program;
+import org.openmrs.ProgramAttributeType;
 import org.openmrs.ProgramWorkflow;
 import org.openmrs.ProgramWorkflowState;
 import org.openmrs.User;
@@ -49,7 +50,9 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 	
 	protected static final String PROGRAM_WITH_OUTCOMES_XML = "org/openmrs/api/include/ProgramWorkflowServiceTest-initialData.xml";
 	
-	protected ProgramWorkflowService pws = null;
+	protected static final String PROGRAM_ATTRIBUTES_XML = "org/openmrs/api/include/ProgramAttributesDataset.xml";
+        
+        protected ProgramWorkflowService pws = null;
 	
 	protected AdministrationService adminService = null;
 	
@@ -60,7 +63,8 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 	@Before
 	public void runBeforeEachTest() {
 		executeDataSet(CREATE_PATIENT_PROGRAMS_XML);
-		
+		executeDataSet(PROGRAM_ATTRIBUTES_XML);
+                
 		if (pws == null) {
 			pws = Context.getProgramWorkflowService();
 			adminService = Context.getAdministrationService();
@@ -107,7 +111,7 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		Date dateCompleted2 = patientProgram.getDateCompleted();
 		Date dateChanged2 = patientProgram.getDateChanged();
 		User changedBy2 = patientProgram.getChangedBy();
-		
+
 		if (null != dateCompleted2) {
 			//System.out.println("Date Completed: " + dateCompleted2);
 		}
@@ -121,6 +125,237 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		assertNotNull(ptProg.getDateCompleted());
 		assertEquals(today, ptProg.getDateCompleted());
 		
+	}
+
+	/**
+	 * Tests if the savePatientProgram(PatientProgram) sets the EndDate of recent state of each workflow
+	 * on calling the setDateCompleted(Date date) method.
+	 *
+	 * @see ProgramWorkflowService#savePatientProgram(PatientProgram)
+	 */
+	@Test
+	public void savePatientProgram_shouldSetEndDateOfAllRecentStatesWhenCompletingTheProgram() throws Exception {
+		Date day3 = new Date();
+		Date day2_5 = new Date(day3.getTime() - 12*3600*1000);
+		Date day2 = new Date(day3.getTime() - 24*3600*1000);
+		Date day1 = new Date(day2.getTime() - 24*3600*1000);
+
+		// Program Architecture
+		Program program = new Program();
+		program.setName("TEST PROGRAM");
+		program.setDescription("TEST PROGRAM DESCRIPTION");
+		program.setConcept(cs.getConcept(3));
+
+		ProgramWorkflow workflow1 = new ProgramWorkflow();
+		workflow1.setConcept(cs.getConcept(4));
+		program.addWorkflow(workflow1);
+
+		ProgramWorkflow workflow2 = new ProgramWorkflow();
+		workflow2.setConcept(cs.getConcept(4));
+		program.addWorkflow(workflow2);
+
+		// workflow1
+		ProgramWorkflowState state1_w1 = new ProgramWorkflowState();
+		state1_w1.setConcept(cs.getConcept(5));
+		state1_w1.setInitial(true);
+		state1_w1.setTerminal(false);
+		workflow1.addState(state1_w1);
+
+		ProgramWorkflowState state2_w1 = new ProgramWorkflowState();
+		state2_w1.setConcept(cs.getConcept(6));
+		state2_w1.setInitial(false);
+		state2_w1.setTerminal(true);
+		workflow1.addState(state2_w1);
+
+		// workflow2
+		ProgramWorkflowState state1_w2 = new ProgramWorkflowState();
+		state1_w2.setConcept(cs.getConcept(5));
+		state1_w2.setInitial(true);
+		state1_w2.setTerminal(false);
+		workflow2.addState(state1_w2);
+
+		ProgramWorkflowState state2_w2 = new ProgramWorkflowState();
+		state2_w2.setConcept(cs.getConcept(6));
+		state2_w2.setInitial(false);
+		state2_w2.setTerminal(true);
+		workflow2.addState(state2_w2);
+
+		Context.getProgramWorkflowService().saveProgram(program);
+
+		// Patient Program Architecture
+		PatientProgram patientprogram = new PatientProgram();
+		patientprogram.setProgram(program);
+		patientprogram.setPatient(new Patient());
+		patientprogram.setDateEnrolled(day1);
+		patientprogram.setDateCompleted(null);
+
+		PatientState patientstate1_w1 = new PatientState();
+		patientstate1_w1.setStartDate(day1);
+		patientstate1_w1.setEndDate(day2);
+		patientstate1_w1.setState(state1_w1);
+
+		PatientState patientstate2_w1 = new PatientState();
+		patientstate2_w1.setStartDate(day2);
+		// Forcefully setEndDate to simulate suspended state
+		patientstate2_w1.setEndDate(day2_5);
+		patientstate2_w1.setState(state2_w1);
+
+		PatientState patientstate1_w2 = new PatientState();
+		patientstate1_w2.setStartDate(day1);
+		patientstate1_w2.setEndDate(day2);
+		patientstate1_w2.setState(state1_w2);
+
+		PatientState patientstate2_w2 = new PatientState();
+		patientstate2_w2.setStartDate(day2);
+		patientstate2_w2.setEndDate(null);
+		patientstate2_w2.setState(state2_w2);
+
+		patientprogram.getStates().add(patientstate1_w1);
+		patientprogram.getStates().add(patientstate2_w1);
+		patientprogram.getStates().add(patientstate1_w2);
+		patientprogram.getStates().add(patientstate2_w2);
+
+		patientstate1_w1.setPatientProgram(patientprogram);
+		patientstate2_w1.setPatientProgram(patientprogram);
+		patientstate1_w2.setPatientProgram(patientprogram);
+		patientstate2_w2.setPatientProgram(patientprogram);
+
+		// when
+		Date terminal_date = day3;
+		patientprogram.setDateCompleted(terminal_date);
+		Context.getProgramWorkflowService().savePatientProgram(patientprogram);
+
+		// then
+		// End date of recent active states should be set
+		assertTrue((patientstate2_w2.getEndDate().toString()).equals(terminal_date.toString()));
+		assertTrue((patientprogram.getDateCompleted()).equals(patientstate2_w2.getEndDate()));
+		// End Date of suspended state should not change
+		assertTrue((patientstate2_w1.getEndDate().toString()).equals(day2_5.toString()));
+		// End date of past states should not change
+		assertTrue((patientstate1_w1.getEndDate().toString()).equals(day2.toString()));
+		assertTrue((patientstate1_w2.getEndDate().toString()).equals(day2.toString()));
+
+	}
+
+	/**
+	 * Tests if the savePatientProgram(PatientProgram) sets the EndDate of recent state of each workflow
+	 * when a patient transitions to a terminal state.
+	 *
+	 * @see ProgramWorkflowService#savePatientProgram(PatientProgram)
+	 */
+	@Test
+	public void savePatientProgram_shouldSetEndDateOfAllRecentStatesOnTransitionToTerminalState() throws Exception {
+		Date day3 = new Date();
+		Date day2_5 = new Date(day3.getTime() - 12*3600*1000);
+		Date day2 = new Date(day3.getTime() - 24*3600*1000);
+		Date day1 = new Date(day2.getTime() - 24*3600*1000);
+
+		// Program Architecture
+		Program program = new Program();
+		program.setName("TEST PROGRAM");
+		program.setDescription("TEST PROGRAM DESCRIPTION");
+		program.setConcept(cs.getConcept(3));
+
+		ProgramWorkflow workflow1 = new ProgramWorkflow();
+		workflow1.setConcept(cs.getConcept(4));
+		program.addWorkflow(workflow1);
+
+		ProgramWorkflow workflow2 = new ProgramWorkflow();
+		workflow2.setConcept(cs.getConcept(4));
+		program.addWorkflow(workflow2);
+
+		ProgramWorkflow workflow3 = new ProgramWorkflow();
+		workflow3.setConcept(cs.getConcept(4));
+		program.addWorkflow(workflow3);
+
+		// workflow1
+		ProgramWorkflowState state1_w1 = new ProgramWorkflowState();
+		state1_w1.setConcept(cs.getConcept(5));
+		state1_w1.setInitial(true);
+		state1_w1.setTerminal(false);
+		workflow1.addState(state1_w1);
+
+		ProgramWorkflowState state2_w1 = new ProgramWorkflowState();
+		state2_w1.setConcept(cs.getConcept(6));
+		state2_w1.setInitial(false);
+		state2_w1.setTerminal(true);
+		workflow1.addState(state2_w1);
+
+		// workflow2
+		ProgramWorkflowState state1_w2 = new ProgramWorkflowState();
+		state1_w2.setConcept(cs.getConcept(5));
+		state1_w2.setInitial(true);
+		state1_w2.setTerminal(false);
+		workflow2.addState(state1_w2);
+
+		ProgramWorkflowState state2_w2 = new ProgramWorkflowState();
+		state2_w2.setConcept(cs.getConcept(6));
+		state2_w2.setInitial(false);
+		state2_w2.setTerminal(true);
+		workflow2.addState(state2_w2);
+
+		//workflow3
+		ProgramWorkflowState state1_w3 = new ProgramWorkflowState();
+		state1_w3.setConcept(cs.getConcept(5));
+		state1_w3.setInitial(true);
+		state1_w3.setTerminal(false);
+		workflow3.addState(state1_w3);
+
+		ProgramWorkflowState state2_w3 = new ProgramWorkflowState();
+		state2_w3.setConcept(cs.getConcept(6));
+		state2_w3.setInitial(false);
+		state2_w3.setTerminal(true);
+		workflow3.addState(state2_w3);
+
+		Context.getProgramWorkflowService().saveProgram(program);
+
+		// Patient Program Architecture
+		PatientProgram patientprogram = new PatientProgram();
+		patientprogram.setProgram(program);
+		patientprogram.setPatient(new Patient());
+		patientprogram.setDateEnrolled(day1);
+		patientprogram.setDateCompleted(null);
+
+		PatientState patientstate1_w1 = new PatientState();
+		patientstate1_w1.setStartDate(day1);
+		patientstate1_w1.setState(state1_w1);
+
+		PatientState patientstate1_w2 = new PatientState();
+		patientstate1_w2.setStartDate(day1);
+		patientstate1_w2.setState(state1_w2);
+
+		PatientState patientstate1_w3 = new PatientState();
+		patientstate1_w3.setStartDate(day1);
+		patientstate1_w3.setState(state1_w3);
+		// Forcefully setEndDate to simulate suspended state
+		patientstate1_w3.setEndDate(day2_5);
+
+		patientprogram.getStates().add(patientstate1_w1);
+		patientprogram.getStates().add(patientstate1_w2);
+		patientprogram.getStates().add(patientstate1_w3);
+
+		patientstate1_w1.setPatientProgram(patientprogram);
+		patientstate1_w2.setPatientProgram(patientprogram);
+		patientstate1_w3.setPatientProgram(patientprogram);
+
+		// when
+		patientprogram.transitionToState(state2_w1, day3);
+		pws.savePatientProgram(patientprogram);
+
+		// then
+		for (PatientState state : patientprogram.getMostRecentStateInEachWorkflow()) {
+			if (!(state.equals(patientstate1_w3))) {
+				assertTrue(state.getEndDate().toString().equals(patientprogram.getDateCompleted().toString()));
+			}
+		}
+
+		// End date of recent states should be set
+		assertTrue((patientstate1_w2.getEndDate().toString()).equals(patientprogram.getDateCompleted().toString()));
+		assertTrue((patientprogram.getDateCompleted().toString()).equals(day3.toString()));
+		// End date of suspended state should not change
+		assertTrue(patientstate1_w3.getEndDate().toString().equals(day2_5.toString()));
+		// End date of past states should not change
+		assertTrue((patientstate1_w1.getEndDate().toString()).equals(day3.toString()));
 	}
 	
 	/**
@@ -169,7 +404,7 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		for (ProgramWorkflowState s : wf.getStates()) {
 			names.add(s.getConcept().getName().getName());
 		}
-		TestUtil.assertCollectionContentsEquals(Arrays.asList(new String[] { "SINGLE", "MARRIED" }), names);
+		TestUtil.assertCollectionContentsEquals(Arrays.asList("SINGLE", "MARRIED"), names);
 	}
 	
 	/**
@@ -472,7 +707,40 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		// make sure that the program was deleted properly
 		assertNull(Context.getProgramWorkflowService().getProgram(2));
 	}
-	
+	@Test
+	public void shouldTestGetAllProgramAttributeTypes() throws Exception {
+                assertEquals(1, pws.getAllProgramAttributeTypes().size());
+	}
+
+	@Test
+	public void shouldTestGetProgramAttributeType() throws Exception {
+
+		ProgramAttributeType programAttributeType  = pws.getProgramAttributeType(1);
+		assertEquals("d7477c21-bfc3-4922-9591-e89d8b9c8efb",programAttributeType.getUuid());
+	}
+
+	@Test
+	public void shouldTestGetProgramAttributeTypeByUuid() throws Exception {
+		ProgramAttributeType p = pws.getProgramAttributeTypeByUuid("d7477c21-bfc3-4922-9591-e89d8b9c8efb");
+		assertEquals("ProgramId",p.getName());
+	}
+
+	@Test
+	public void shouldTestSaveProgramAttributeType() throws Exception {
+		assertEquals(1,pws.getAllProgramAttributeTypes().size());
+		ProgramAttributeType programAttributeType = new ProgramAttributeType();
+		programAttributeType.setName("test");
+		pws.saveProgramAttributeType(programAttributeType);
+		assertEquals(2,pws.getAllProgramAttributeTypes().size());
+	}
+
+	@Test
+	public void shouldTestPurgeProgramAttributeType() throws Exception {
+		ProgramAttributeType programAttributeType = pws.getProgramAttributeType(1);
+                int totalAttributeTypes = pws.getAllProgramAttributeTypes().size();
+		pws.purgeProgramAttributeType(programAttributeType);
+		assertEquals((totalAttributeTypes - 1), pws.getAllProgramAttributeTypes().size());
+}
 	//	/**
 	//	 * This method should be uncommented when you want to examine the actual hibernate
 	//	 * sql calls being made.  The calls that should be limiting the number of returned

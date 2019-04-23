@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -183,8 +184,8 @@ public class InitializationFilter extends StartupFilter {
 	 * Variable set at the end of the wizard when spring is being restarted
 	 */
 	private static boolean initializationComplete = false;
-	
-	synchronized protected void setInitializationComplete(boolean initializationComplete) {
+
+	protected synchronized void setInitializationComplete(boolean initializationComplete) {
 		InitializationFilter.initializationComplete = initializationComplete;
 	}
 	
@@ -205,7 +206,7 @@ public class InitializationFilter extends StartupFilter {
 			checkLocaleAttributesForFirstTime(httpRequest);
 		}
 		
-		Map<String, Object> referenceMap = new HashMap<String, Object>();
+		Map<String, Object> referenceMap = new HashMap<>();
 		String page = httpRequest.getParameter("page");
 		
 		referenceMap.put(FilterUtil.LOCALE_ATTRIBUTE, httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE));
@@ -219,7 +220,7 @@ public class InitializationFilter extends StartupFilter {
 			renderTemplate(PROGRESS_VM, referenceMap, httpResponse);
 		} else if (PROGRESS_VM_AJAXREQUEST.equals(page)) {
 			httpResponse.setContentType("text/json");
-			Map<String, Object> result = new HashMap<String, Object>();
+			Map<String, Object> result = new HashMap<>();
 			if (initJob != null) {
 				result.put("hasErrors", initJob.hasErrors());
 				if (initJob.hasErrors()) {
@@ -324,40 +325,40 @@ public class InitializationFilter extends StartupFilter {
 			wizardModel.currentDatabasePassword = script.getProperty("connection.password",
 			    wizardModel.currentDatabasePassword);
 			
-			String has_current_openmrs_database = script.getProperty("has_current_openmrs_database");
-			if (has_current_openmrs_database != null) {
-				wizardModel.hasCurrentOpenmrsDatabase = Boolean.valueOf(has_current_openmrs_database);
+			String hasCurrentOpenmrsDatabase = script.getProperty("has_current_openmrs_database");
+			if (hasCurrentOpenmrsDatabase != null) {
+				wizardModel.hasCurrentOpenmrsDatabase = Boolean.valueOf(hasCurrentOpenmrsDatabase);
 			}
 			wizardModel.createDatabaseUsername = script.getProperty("create_database_username",
 			    wizardModel.createDatabaseUsername);
 			wizardModel.createDatabasePassword = script.getProperty("create_database_password",
 			    wizardModel.createDatabasePassword);
 			
-			String create_tables = script.getProperty("create_tables");
-			if (create_tables != null) {
-				wizardModel.createTables = Boolean.valueOf(create_tables);
+			String createTables = script.getProperty("create_tables");
+			if (createTables != null) {
+				wizardModel.createTables = Boolean.valueOf(createTables);
 			}
 			
-			String create_database_user = script.getProperty("create_database_user");
-			if (create_database_user != null) {
-				wizardModel.createDatabaseUser = Boolean.valueOf(create_database_user);
+			String createDatabaseUser = script.getProperty("create_database_user");
+			if (createDatabaseUser != null) {
+				wizardModel.createDatabaseUser = Boolean.valueOf(createDatabaseUser);
 			}
 			wizardModel.createUserUsername = script.getProperty("create_user_username", wizardModel.createUserUsername);
 			wizardModel.createUserPassword = script.getProperty("create_user_password", wizardModel.createUserPassword);
 			
-			String add_demo_data = script.getProperty("add_demo_data");
-			if (add_demo_data != null) {
-				wizardModel.addDemoData = Boolean.valueOf(add_demo_data);
+			String addDemoData = script.getProperty("add_demo_data");
+			if (addDemoData != null) {
+				wizardModel.addDemoData = Boolean.valueOf(addDemoData);
 			}
 			
-			String module_web_admin = script.getProperty("module_web_admin");
-			if (module_web_admin != null) {
-				wizardModel.moduleWebAdmin = Boolean.valueOf(module_web_admin);
+			String moduleWebAdmin = script.getProperty("module_web_admin");
+			if (moduleWebAdmin != null) {
+				wizardModel.moduleWebAdmin = Boolean.valueOf(moduleWebAdmin);
 			}
 			
-			String auto_update_database = script.getProperty("auto_update_database");
-			if (auto_update_database != null) {
-				wizardModel.autoUpdateDatabase = Boolean.valueOf(auto_update_database);
+			String autoUpdateDatabase = script.getProperty("auto_update_database");
+			if (autoUpdateDatabase != null) {
+				wizardModel.autoUpdateDatabase = Boolean.valueOf(autoUpdateDatabase);
 			}
 			
 			wizardModel.adminUserPassword = script.getProperty("admin_user_password", wizardModel.adminUserPassword);
@@ -382,7 +383,7 @@ public class InitializationFilter extends StartupFilter {
 	protected void doPost(HttpServletRequest httpRequest, HttpServletResponse httpResponse) throws IOException,
 	        ServletException {
 		String page = httpRequest.getParameter("page");
-		Map<String, Object> referenceMap = new HashMap<String, Object>();
+		Map<String, Object> referenceMap = new HashMap<>();
 		// we need to save current user language in references map since it will be used when template
 		// will be rendered
 		if (httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE) != null) {
@@ -723,7 +724,7 @@ public class InitializationFilter extends StartupFilter {
 				return;
 			}
 			
-			wizardModel.tasksToExecute = new ArrayList<WizardTask>();
+			wizardModel.tasksToExecute = new ArrayList<>();
 			createDatabaseTask();
 			if (InitializationWizardModel.INSTALL_METHOD_TESTING.equals(wizardModel.installMethod)) {
 				wizardModel.importTestData = true;
@@ -821,7 +822,6 @@ public class InitializationFilter extends StartupFilter {
 			}
 			
 			renderTemplate(page, referenceMap, httpResponse);
-			return;
 		}
 	}
 	
@@ -913,7 +913,7 @@ public class InitializationFilter extends StartupFilter {
 			errors.put(ErrorMessageConstants.ERROR_DB_DRIVER_CLASS_REQ, null);
 			return;
 		}
-		wizardModel.tasksToExecute = new ArrayList<WizardTask>();
+		wizardModel.tasksToExecute = new ArrayList<>();
 		createDatabaseTask();
 		createTablesTask();
 		createDemoDataTask();
@@ -1008,7 +1008,7 @@ public class InitializationFilter extends StartupFilter {
 	 * @return the runtime properties file.
 	 */
 	private File getRuntimePropertiesFile() {
-		File file = null;
+		File file;
 		
 		String pathName = OpenmrsUtil.getRuntimePropertiesFilePathName(WebConstants.WEBAPP_NAME);
 		if (pathName != null) {
@@ -1158,7 +1158,7 @@ public class InitializationFilter extends StartupFilter {
 				replacedSql = replacedSql.replaceAll("`", "\"");
 			}
 			
-			String tempDatabaseConnection = "";
+			String tempDatabaseConnection;
 			if (sql.contains("create database")) {
 				tempDatabaseConnection = wizardModel.databaseConnection.replace("@DBNAME@", ""); // make this dbname agnostic so we can create the db
 			} else {
@@ -1174,10 +1174,8 @@ public class InitializationFilter extends StartupFilter {
 			
 			// run the sql statement
 			statement = connection.createStatement();
-			
-			int updateDelta = statement.executeUpdate(replacedSql);
-			statement.close();
-			return updateDelta;
+
+			return statement.executeUpdate(replacedSql);
 			
 		}
 		catch (SQLException sqlex) {
@@ -1187,18 +1185,12 @@ public class InitializationFilter extends StartupFilter {
 				errors.put("Error executing sql: " + sql + " - " + sqlex.getMessage(), null);
 			}
 		}
-		catch (InstantiationException e) {
-			log.error("Error generated", e);
-		}
-		catch (IllegalAccessException e) {
-			log.error("Error generated", e);
-		}
-		catch (ClassNotFoundException e) {
+		catch (InstantiationException | ClassNotFoundException | IllegalAccessException e) {
 			log.error("Error generated", e);
 		}
 		finally {
 			try {
-				if (statement != null && !statement.isClosed()) {
+				if (statement != null) {
 					statement.close();
 				}
 			}
@@ -1225,7 +1217,7 @@ public class InitializationFilter extends StartupFilter {
 	 *
 	 * @return true if this has been run already
 	 */
-	synchronized private static boolean isInitializationComplete() {
+	private static synchronized boolean isInitializationComplete() {
 		return initializationComplete;
 	}
 	
@@ -1258,7 +1250,7 @@ public class InitializationFilter extends StartupFilter {
 		
 		private String message = "";
 		
-		private Map<String, Object[]> errors = new HashMap<String, Object[]>();
+		private Map<String, Object[]> errors = new HashMap<>();
 		
 		private String errorPage = null;
 		
@@ -1268,23 +1260,23 @@ public class InitializationFilter extends StartupFilter {
 		
 		private WizardTask executingTask;
 		
-		private List<WizardTask> executedTasks = new ArrayList<WizardTask>();
+		private List<WizardTask> executedTasks = new ArrayList<>();
 		
-		synchronized public void reportError(String error, String errorPage, Object... params) {
+		public synchronized void reportError(String error, String errorPage, Object... params) {
 			errors.put(error, params);
 			this.errorPage = errorPage;
 			erroneous = true;
 		}
-		
-		synchronized public boolean hasErrors() {
+
+		public synchronized boolean hasErrors() {
 			return erroneous;
 		}
-		
-		synchronized public String getErrorPage() {
+
+		public synchronized String getErrorPage() {
 			return errorPage;
 		}
-		
-		synchronized public Map<String, Object[]> getErrors() {
+
+		public synchronized Map<String, Object[]> getErrors() {
 			return errors;
 		}
 		
@@ -1305,20 +1297,20 @@ public class InitializationFilter extends StartupFilter {
 				log.error("Error generated", e);
 			}
 		}
-		
-		synchronized protected void setStepsComplete(int steps) {
+
+		protected synchronized void setStepsComplete(int steps) {
 			this.steps = steps;
 		}
 		
-		synchronized protected int getStepsComplete() {
+		protected synchronized int getStepsComplete() {
 			return steps;
 		}
 		
-		synchronized public String getMessage() {
+		public synchronized String getMessage() {
 			return message;
 		}
 		
-		synchronized public void setMessage(String message) {
+		public synchronized void setMessage(String message) {
 			this.message = message;
 			setStepsComplete(getStepsComplete() + 1);
 		}
@@ -1326,7 +1318,7 @@ public class InitializationFilter extends StartupFilter {
 		/**
 		 * @return the executingTask
 		 */
-		synchronized protected WizardTask getExecutingTask() {
+		protected synchronized WizardTask getExecutingTask() {
 			return executingTask;
 		}
 		
@@ -1349,21 +1341,21 @@ public class InitializationFilter extends StartupFilter {
 		 *
 		 * @param task
 		 */
-		synchronized protected void addExecutedTask(WizardTask task) {
+		protected synchronized void addExecutedTask(WizardTask task) {
 			this.executedTasks.add(task);
 		}
 		
 		/**
 		 * @param executingTask the executingTask to set
 		 */
-		synchronized protected void setExecutingTask(WizardTask executingTask) {
+		protected synchronized void setExecutingTask(WizardTask executingTask) {
 			this.executingTask = executingTask;
 		}
 		
 		/**
 		 * @return the executedTasks
 		 */
-		synchronized protected List<WizardTask> getExecutedTasks() {
+		protected synchronized List<WizardTask> getExecutedTasks() {
 			return this.executedTasks;
 		}
 		
@@ -1388,7 +1380,7 @@ public class InitializationFilter extends StartupFilter {
 							setMessage("Create database");
 							setExecutingTask(WizardTask.CREATE_SCHEMA);
 							// connect via jdbc and create a database
-							String sql = null;
+							String sql;
 							if (wizardModel.databaseConnection.contains("mysql")) {
 								sql = "create database if not exists `?` default character set utf8";
 							} else if (wizardModel.databaseConnection.contains("postgresql")) {
@@ -1511,9 +1503,9 @@ public class InitializationFilter extends StartupFilter {
 						runtimeProperties.put("auto_update_database", wizardModel.autoUpdateDatabase.toString());
 						final Encoder base64 = Base64.getEncoder();
 						runtimeProperties.put(OpenmrsConstants.ENCRYPTION_VECTOR_RUNTIME_PROPERTY,
-						    new String(base64.encode(Security.generateNewInitVector())));
+						    new String(base64.encode(Security.generateNewInitVector()), StandardCharsets.UTF_8));
 						runtimeProperties.put(OpenmrsConstants.ENCRYPTION_KEY_RUNTIME_PROPERTY,
-						    new String(base64.encode(Security.generateNewSecretKey())));
+						    new String(base64.encode(Security.generateNewSecretKey()), StandardCharsets.UTF_8));
 						
 						Properties properties = Context.getRuntimeProperties();
 						properties.putAll(runtimeProperties);

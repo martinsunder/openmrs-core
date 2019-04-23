@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.core.LowerCaseFilterFactory;
 import org.apache.lucene.analysis.standard.StandardFilterFactory;
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
@@ -55,7 +55,8 @@ public class ConceptName extends BaseOpenmrsObject implements Auditable, Voidabl
 	
 	@Field(analyze = Analyze.NO)
 	@FieldBridge(impl = LocaleFieldBridge.class)
-	private Locale locale; // ABK: upgraded from a plain string to a full locale object
+	// ABK: upgraded from a plain string to a full locale object
+	private Locale locale; 
 	
 	private User creator;
 	
@@ -372,7 +373,7 @@ public class ConceptName extends BaseOpenmrsObject implements Auditable, Voidabl
 	 */
 	public void addTag(ConceptNameTag tag) {
 		if (tags == null) {
-			tags = new HashSet<ConceptNameTag>();
+			tags = new HashSet<>();
 		}
 		
 		if (!tags.contains(tag)) {
@@ -443,12 +444,9 @@ public class ConceptName extends BaseOpenmrsObject implements Auditable, Voidabl
 	 *         false
 	 */
 	public Boolean isPreferredInLanguage(String language) {
-		if (!StringUtils.isBlank(language) && this.locale != null && isPreferred()
-		        && this.locale.getLanguage().equals(language)) {
-			return true;
-		}
-		
-		return false;
+		return !StringUtils.isBlank(language) && this.locale != null && isPreferred()
+				&& this.locale.getLanguage().equals(language);
+
 	}
 	
 	/**
@@ -461,12 +459,9 @@ public class ConceptName extends BaseOpenmrsObject implements Auditable, Voidabl
 	 *         false
 	 */
 	public Boolean isPreferredInCountry(String country) {
-		if (!StringUtils.isBlank(country) && this.locale != null && isPreferred()
-		        && this.locale.getCountry().equals(country)) {
-			return true;
-		}
-		
-		return false;
+		return !StringUtils.isBlank(country) && this.locale != null && isPreferred()
+				&& this.locale.getCountry().equals(country);
+
 	}
 	
 	/**

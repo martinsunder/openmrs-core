@@ -9,11 +9,9 @@
  */
 package org.openmrs.web.filter.startuperror;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmrs.web.filter.StartupFilter;
 import org.openmrs.web.filter.update.UpdateFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link UpdateFilter} uses this model object to hold all properties that are edited by the
@@ -22,17 +20,9 @@ import org.slf4j.LoggerFactory;
  */
 public class StartupErrorFilterModel {
 	
-	protected static final Logger log = LoggerFactory.getLogger(StartupErrorFilterModel.class);
+	public Throwable errorAtStartup;
 	
-	// automatically given to the .vm files and used there
-	public String headerTemplate = "org/openmrs/web/filter/startuperror/header.vm";
-	
-	// automatically given to the .vm files and used there
-	public String footerTemplate = "org/openmrs/web/filter/startuperror/footer.vm";
-	
-	public Throwable errorAtStartup = null;
-	
-	public String stacktrace = null;
+	public String stacktrace;
 	
 	/**
 	 * Default constructor that sets up some of the properties

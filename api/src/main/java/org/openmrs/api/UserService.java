@@ -14,14 +14,13 @@ import java.util.Map;
 
 import org.openmrs.Person;
 import org.openmrs.Privilege;
-import org.openmrs.PrivilegeListener;
 import org.openmrs.Role;
 import org.openmrs.User;
 import org.openmrs.annotation.Authorized;
 import org.openmrs.annotation.Logging;
-import org.openmrs.api.context.UserContext;
 import org.openmrs.util.PersonByNameComparator;
 import org.openmrs.util.PrivilegeConstants;
+import org.openmrs.notification.MessageException;
 
 /**
  * Contains methods pertaining to Users in the system Use:<br>
@@ -94,13 +93,29 @@ public interface UserService extends OpenmrsService {
 	/**
 	 * Get user by username (user's login identifier)
 	 * 
-	 * @param username user's identifier used for authentication
+	 * @param username User's identifier used for authentication
 	 * @return requested user
-	 * @throws APIException
 	 * @should get user by username
 	 */
 	@Authorized( { PrivilegeConstants.GET_USERS })
-	public User getUserByUsername(String username) throws APIException;
+	public User getUserByUsername(String username);
+	
+	/**
+	 * Gets a user by username or email
+	 * 
+	 * @param usernameOrEmail User's email address or username
+	 * @return requested user or null if not found
+	 */
+	@Authorized( { PrivilegeConstants.GET_USERS })
+	public User getUserByUsernameOrEmail(String usernameOrEmail);
+	
+	/**
+	 * Gets a user with the specified activation key
+	 * @param activationKey User's activation key for password reset 
+	 * @return requested User with associated  activation key
+	 */
+	@Authorized( { PrivilegeConstants.GET_USERS })
+	public User getUserByActivationKey(String activationKey);
 	
 	/**
 	 * true/false if username or systemId is already in db in username or system_id columns
@@ -510,20 +525,6 @@ public interface UserService extends OpenmrsService {
 	public Integer getCountOfUsers(String name, List<Role> roles, boolean includeRetired);
 	
 	/**
-	 * Notifies privilege listener beans about any privilege check.
-	 * <p>
-	 * It is called by {@link UserContext#hasPrivilege(java.lang.String)}.
-	 * 
-	 * @see PrivilegeListener
-	 * @param user the authenticated user or <code>null</code> if not authenticated
-	 * @param privilege the checked privilege
-	 * @param hasPrivilege <code>true</code> if the authenticated user has the required privilege or
-	 *            if it is a proxy privilege
-	 * @since 1.8.4, 1.9.1, 1.10
-	 */
-	public void notifyPrivilegeListeners(User user, String privilege, boolean hasPrivilege);
-	
-	/**
 	 * Saves the current key/value as a user property for the current user.
 	 * 
 	 * @param key the authenticated user's property
@@ -551,5 +552,18 @@ public interface UserService extends OpenmrsService {
 	 */
 	@Authorized
 	public void changePasswordUsingSecretAnswer(String secretAnswer, String pw) throws APIException;
-
+	
+	/**
+	 * Sets a user's activation key
+	 * @param User The user for which the activation key will be set
+	 */
+	public User setUserActivationKey(User user) throws MessageException;
+	
+	/**
+	 * Change user password given the activation key
+	 * 
+	 * @param activationKey the activation for password reset
+	 * @param newPassword the new password
+	 */
+	public void changePasswordUsingActivationKey(String activationKey, String newPassword);
 }

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -83,7 +83,7 @@ public class HibernateProviderDAO implements ProviderDAO {
 	 */
 	@Override
 	public Provider getProvider(Integer id) {
-		return (Provider) getSession().load(Provider.class, id);
+		return (Provider) getSession().get(Provider.class, id);
 	}
 	
 	/**
@@ -118,7 +118,7 @@ public class HibernateProviderDAO implements ProviderDAO {
 	 */
 	@Override
 	public ProviderAttribute getProviderAttribute(Integer providerAttributeID) {
-		return (ProviderAttribute) getSession().load(ProviderAttribute.class, providerAttributeID);
+		return (ProviderAttribute) getSession().get(ProviderAttribute.class, providerAttributeID);
 	}
 	
 	/**
@@ -241,9 +241,8 @@ public class HibernateProviderDAO implements ProviderDAO {
 	 */
 	@Override
 	public Long getCountOfProviders(String name, boolean includeRetired) {
-		Criteria criteria = prepareProviderCriteria(name, includeRetired);
-		criteria.setProjection(Projections.countDistinct("providerId"));
-		return (Long) criteria.uniqueResult();
+	  Criteria criteria = prepareProviderCriteria(name, includeRetired);
+	  return (long) criteria.list().size();
 	}
 	
 	/* (non-Javadoc)
@@ -277,7 +276,7 @@ public class HibernateProviderDAO implements ProviderDAO {
 	 */
 	@Override
 	public ProviderAttributeType getProviderAttributeType(Integer providerAttributeTypeId) {
-		return (ProviderAttributeType) getSession().load(ProviderAttributeType.class, providerAttributeTypeId);
+		return (ProviderAttributeType) getSession().get(ProviderAttributeType.class, providerAttributeTypeId);
 	}
 	
 	/* (non-Javadoc)

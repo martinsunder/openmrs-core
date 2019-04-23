@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Criteria;
 import org.hibernate.Query;
 import org.hibernate.SessionFactory;
@@ -22,6 +22,7 @@ import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.MatchMode;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Projections;
+import org.hibernate.criterion.Property;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.criterion.Subqueries;
 import org.openmrs.Concept;
@@ -48,7 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HibernateFormDAO implements FormDAO {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(HibernateFormDAO.class);
 	
 	/**
 	 * Hibernate session factory
@@ -234,8 +235,7 @@ public class HibernateFormDAO implements FormDAO {
 			}
 		} else {
 			// if formFields.size() is still greater than 0
-			FormField ff = (FormField) formFields.get(0);
-			return ff;
+			return formFields.get(0);
 		}
 	}
 	
@@ -435,8 +435,7 @@ public class HibernateFormDAO implements FormDAO {
 	        Boolean retired, Collection<FormField> containingAnyFormField, Collection<FormField> containingAllFormFields,
 	        Collection<Field> fields) {
 		
-		Criteria crit = sessionFactory.getCurrentSession().createCriteria(Form.class, "form");
-		
+		Criteria crit = sessionFactory.getCurrentSession().createCriteria(Form.class, "f");
 		if (StringUtils.isNotEmpty(partialName)) {
 			crit.add(Restrictions.or(Restrictions.like("name", partialName, MatchMode.START), Restrictions.like("name", " "
 			        + partialName, MatchMode.ANYWHERE)));
@@ -456,7 +455,7 @@ public class HibernateFormDAO implements FormDAO {
 		// TODO junit test
 		if (!containingAnyFormField.isEmpty()) {
 			// Convert form field persistents to integers
-			Set<Integer> anyFormFieldIds = new HashSet<Integer>();
+			Set<Integer> anyFormFieldIds = new HashSet<>();
 			for (FormField ff : containingAnyFormField) {
 				anyFormFieldIds.add(ff.getFormFieldId());
 			}
@@ -464,23 +463,22 @@ public class HibernateFormDAO implements FormDAO {
 			DetachedCriteria subquery = DetachedCriteria.forClass(FormField.class, "ff");
 			subquery.setProjection(Projections.property("ff.form.formId"));
 			subquery.add(Restrictions.in("ff.formFieldId", anyFormFieldIds));
-			crit.add(Subqueries.propertyIn("form.formId", subquery));
+			crit.add(Subqueries.propertyIn("f.formId", subquery));
 		}
 		
-		//select * from form where len(containingallformfields) = (select count(*) from form_field ff where ff.form_id = form_id and form_field_id in (containingallformfields);
 		if (!containingAllFormFields.isEmpty()) {
 			
 			// Convert form field persistents to integers
-			Set<Integer> allFormFieldIds = new HashSet<Integer>();
+			Set<Integer> allFormFieldIds = new HashSet<>();
 			for (FormField ff : containingAllFormFields) {
 				allFormFieldIds.add(ff.getFormFieldId());
 			}
 			DetachedCriteria subquery = DetachedCriteria.forClass(FormField.class, "ff");
-			subquery.setProjection(Projections.count("ff.formFieldId"));
-			subquery.add(Restrictions.eqProperty("ff.form", "form"));
-			subquery.add(Restrictions.in("ff.formFieldId", allFormFieldIds));
+			subquery.setProjection(Projections.count("ff.formFieldId")).
+			add(Property.forName("ff.form.formId").eqProperty("f.formId")).
+			add(Restrictions.in("ff.formFieldId", allFormFieldIds));
+			crit.add(Subqueries.eq((long) containingAllFormFields.size(), subquery));
 			
-			crit.add(Subqueries.eq(Long.valueOf(containingAllFormFields.size()), subquery));
 		}
 		
 		// get all forms (dupes included) that have this field on them

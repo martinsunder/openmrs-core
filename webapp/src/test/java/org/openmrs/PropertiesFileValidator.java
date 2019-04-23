@@ -47,7 +47,7 @@ public class PropertiesFileValidator {
 
 	private List<String> filterKeysWithMultipleValues(MultiMap keyValuesMap) {
 
-		List<String> result = new ArrayList<String>();
+		List<String> result = new ArrayList<>();
 
 		for (Object entryObject : keyValuesMap.entrySet()) {
 			// apache commons multimap in version 3.* do not use generics (
@@ -84,7 +84,7 @@ public class PropertiesFileValidator {
 
 		String[] keyValueTab = line.split("=");
 
-		return new AbstractMap.SimpleEntry<String, String>(keyValueTab[0], keyValueTab[1]);
+		return new AbstractMap.SimpleEntry<>(keyValueTab[0], keyValueTab[1]);
 	}
 
 	private List<String> getLines(InputStream inputStream) throws IOException {
@@ -92,9 +92,9 @@ public class PropertiesFileValidator {
 		BufferedReader bufferedReader = new BufferedReader(
 				new InputStreamReader(inputStream));
 
-		String line = null;
+		String line;
 
-		List<String> result = new ArrayList<String>();
+		List<String> result = new ArrayList<>();
 
 		while ((line = bufferedReader.readLine()) != null) {
 			result.add(line);

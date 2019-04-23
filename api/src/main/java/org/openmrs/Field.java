@@ -19,7 +19,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
  *
  * @version 1.0
  */
-public class Field extends BaseOpenmrsMetadata {
+public class Field extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 4454L;
 	
@@ -182,7 +182,7 @@ public class Field extends BaseOpenmrsMetadata {
 	 */
 	public void addAnswer(FieldAnswer fieldAnswer) {
 		if (answers == null) {
-			answers = new HashSet<FieldAnswer>();
+			answers = new HashSet<>();
 		}
 		if (!answers.contains(fieldAnswer) && fieldAnswer != null) {
 			answers.add(fieldAnswer);

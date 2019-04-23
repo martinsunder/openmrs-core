@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  *
  * @see Privilege
  */
-public class Role extends BaseOpenmrsMetadata {
+public class Role extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 1234233L;
 	
@@ -84,7 +84,7 @@ public class Role extends BaseOpenmrsMetadata {
 	 */
 	public void addPrivilege(Privilege privilege) {
 		if (privileges == null) {
-			privileges = new HashSet<Privilege>();
+			privileges = new HashSet<>();
 		}
 		if (privilege != null && !containsPrivilege(privileges, privilege.getPrivilege())) {
 			privileges.add(privilege);
@@ -152,7 +152,7 @@ public class Role extends BaseOpenmrsMetadata {
 		
 		if (privileges != null) {
 			for (Privilege p : privileges) {
-				if (p.getPrivilege().equals(privilegeName)) {
+				if (p.getPrivilege().equalsIgnoreCase(privilegeName)) {
 					return true;
 				}
 			}
@@ -166,7 +166,7 @@ public class Role extends BaseOpenmrsMetadata {
 	 */
 	public Set<Role> getInheritedRoles() {
 		if (inheritedRoles == null) {
-			inheritedRoles = new HashSet<Role>();
+			inheritedRoles = new HashSet<>();
 		}
 		return inheritedRoles;
 	}
@@ -194,7 +194,7 @@ public class Role extends BaseOpenmrsMetadata {
 	 * @return Return this role's parents
 	 */
 	public Set<Role> getAllParentRoles() {
-		Set<Role> parents = new HashSet<Role>();
+		Set<Role> parents = new HashSet<>();
 		if (inheritsRoles()) {
 			parents.addAll(this.recurseOverParents(parents));
 		}
@@ -211,14 +211,12 @@ public class Role extends BaseOpenmrsMetadata {
 		if (!this.inheritsRoles()) {
 			return total;
 		}
-		
-		Set<Role> allRoles = new HashSet<Role>(); // total roles (parents + children)
-		Set<Role> myRoles = new HashSet<Role>(); // new roles
-		allRoles.addAll(total);
-		
-		myRoles.addAll(this.getInheritedRoles());
+
+		Set<Role> allRoles = new HashSet<>(total);
+		Set<Role> myRoles = new HashSet<>(this.getInheritedRoles());
 		myRoles.removeAll(total);
-		myRoles.remove(this); // prevent an obvious looping problem
+		// prevent an obvious looping problem
+		myRoles.remove(this); 
 		allRoles.addAll(myRoles);
 		
 		for (Role r : myRoles) {
@@ -258,7 +256,7 @@ public class Role extends BaseOpenmrsMetadata {
 	 */
 	public Set<Role> getChildRoles() {
 		if (childRoles == null) {
-			childRoles = new HashSet<Role>();
+			childRoles = new HashSet<>();
 		}
 		return childRoles;
 	}
@@ -289,7 +287,7 @@ public class Role extends BaseOpenmrsMetadata {
 	 * @since 1.9
 	 */
 	public Set<Role> getAllChildRoles() {
-		Set<Role> children = new HashSet<Role>();
+		Set<Role> children = new HashSet<>();
 		if (hasChildRoles()) {
 			children.addAll(this.recurseOverChildren(children));
 		}
@@ -307,14 +305,13 @@ public class Role extends BaseOpenmrsMetadata {
 		if (!this.hasChildRoles()) {
 			return total;
 		}
-		
-		Set<Role> allRoles = new HashSet<Role>(); // total roles (parents + children)
-		Set<Role> myRoles = new HashSet<Role>(); // new roles
-		allRoles.addAll(total);
-		
-		myRoles.addAll(this.getChildRoles());
+
+		Set<Role> allRoles = new HashSet<>(total);
+
+		Set<Role> myRoles = new HashSet<>(this.getChildRoles());
 		myRoles.removeAll(total);
-		myRoles.remove(this); // prevent an obvious looping problem
+		// prevent an obvious looping problem
+		myRoles.remove(this); 
 		allRoles.addAll(myRoles);
 		
 		for (Role r : myRoles) {

@@ -9,12 +9,16 @@
  */
 package org.openmrs.api;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
@@ -24,10 +28,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
 import org.openmrs.GlobalProperty;
 import org.openmrs.ImplementationId;
@@ -39,20 +44,20 @@ import org.openmrs.messagesource.MutableMessageSource;
 import org.openmrs.messagesource.impl.MutableResourceBundleMessageSource;
 import org.openmrs.test.BaseContextSensitiveTest;
 import org.openmrs.util.HttpClient;
+import org.openmrs.util.LocaleUtility;
 import org.openmrs.util.OpenmrsConstants;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.interceptor.SimpleKeyGenerator;
 import org.springframework.validation.BindException;
-import org.springframework.validation.Errors;
 
 /**
- * TODO clean up and finish this test class. Should test all methods in the
- * {@link AdministrationService}
+ * Tests the {@link AdministrationService} using a database.
+ * Unit tests are {@link AdministrationServiceUnitTest}.
  */
 public class AdministrationServiceTest extends BaseContextSensitiveTest {
 	
-	private AdministrationService adminService = null;
+	private AdministrationService adminService;
 	
 	protected static final String ADMIN_INITIAL_DATA_XML = "org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml";
 	
@@ -60,29 +65,17 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 
 	private CacheManager cacheManager;
 	
-	/**
-	 * Run this before each unit test in this class. It simply assigns the services used in this
-	 * class to private variables The "@Before" method in {@link BaseContextSensitiveTest} is run
-	 * right before this method and sets up the initial data set and authenticates to the Context
-	 * 
-	 */
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
+	
 	@Before
 	public void runBeforeEachTest() {
-		if (adminService == null) {
-			adminService = Context.getAdministrationService();
-			implementationHttpClient = mock(HttpClient.class);
-			adminService.setImplementationIdHttpClient(implementationHttpClient);
-			cacheManager = Context.getRegisteredComponent("apiCacheManager", CacheManager.class);
-		}
-		
+		adminService = Context.getAdministrationService();
+		implementationHttpClient = mock(HttpClient.class);
+		adminService.setImplementationIdHttpClient(implementationHttpClient);
+		cacheManager = Context.getRegisteredComponent("apiCacheManager", CacheManager.class);
 	}
 	
-	/**
-	 * Tests the AdministrationService.executeSql method with a sql statement containing a valid
-	 * group by clause
-	 * 
-	 * @see AdministrationService#executeSQL(String,null)
-	 */
 	@Test
 	public void executeSQL_shouldExecuteSqlContainingGroupBy() {
 		
@@ -93,9 +86,6 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		adminService.executeSQL(sql2, true);
 	}
 	
-	/**
-	 * @see AdministrationService#setImplementationId(ImplementationId)
-	 */
 	@Test
 	public void setImplementationId_shouldNotFailIfGivenImplementationIdIsNull() {
 		// save a null impl id. no exception thrown
@@ -125,8 +115,6 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 	
 	/**
 	 * This uses a try/catch so that we can make sure no blank id is saved to the database.
-	 * 
-	 * @see AdministrationService#setImplementationId(ImplementationId)
 	 */
 	@Test
 	public void setImplementationId_shouldThrowAPIExceptionIfGivenACaretInTheImplementationIdCode() {
@@ -147,9 +135,6 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		assertNull("There shouldn't be an impl id defined after setting an invalid impl id", afterInvalid);
 	}
 	
-	/**
-	 * @see AdministrationService#setImplementationId(ImplementationId)
-	 */
 	@Test
 	public void setImplementationId_shouldThrowAPIExceptionIfGivenAPipeInTheImplementationIdCode() {
 		// save an impl id with an invalid hl7 code
@@ -169,9 +154,6 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		assertNull("There shouldn't be an impl id defined after setting an invalid impl id", afterInvalid2);
 	}
 	
-	/**
-	 * @see AdministrationService#setImplementationId(ImplementationId)
-	 */
 	@Test
 	@Ignore
 	public void setImplementationId_shouldCreateImplementationIdInDatabase() {
@@ -186,16 +168,13 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		assertEquals(validId, adminService.getImplementationId());
 	}
 	
-	/**
-	 * @see AdministrationService#setImplementationId(ImplementationId)
-	 */
 	@Test
 	@Ignore
 	public void setImplementationId_shouldOverwriteImplementationIdInDatabaseIfExists() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-general.xml");
 		
 		// sanity check to make sure we have an implementation id
-		Assert.assertNotNull(adminService.getImplementationId());
+		assertNotNull(adminService.getImplementationId());
 		Context.clearSession(); // so a NonUniqueObjectException doesn't occur on the global property later
 		
 		// save a second valid id
@@ -208,9 +187,6 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		assertEquals(validId2, adminService.getImplementationId());
 	}
 	
-	/**
-	 * @see AdministrationService#setImplementationId(ImplementationId)
-	 */
 	@Test
 	@Ignore
 	public void setImplementationId_shouldSetUuidOnImplementationIdGlobalProperty() {
@@ -222,20 +198,14 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		adminService.setImplementationId(validId);
 		
 		GlobalProperty gp = adminService.getGlobalPropertyObject(OpenmrsConstants.GLOBAL_PROPERTY_IMPLEMENTATION_ID);
-		Assert.assertNotNull(gp.getUuid());
+		assertNotNull(gp.getUuid());
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalProperty(String)
-	 */
 	@Test
 	public void getGlobalProperty_shouldNotFailWithNullPropertyName() {
 		adminService.getGlobalProperty(null);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalProperty(String)
-	 */
 	@Test
 	public void getGlobalProperty_shouldGetPropertyValueGivenValidPropertyName() {
 		// put the global property into the database
@@ -243,45 +213,33 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		
 		String propertyValue = adminService.getGlobalProperty("a_valid_gp_key");
 		
-		Assert.assertEquals("correct-value", propertyValue);
+		assertEquals("correct-value", propertyValue);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalProperty(String,String)
-	 */
 	@Test
 	public void getGlobalProperty_shouldNotFailWithNullDefaultValue() {
 		adminService.getGlobalProperty("asdfsadfsafd", null);
 	}
 	
-	/**
-	 * @see AdministrationService#updateGlobalProperty(String,String)
-	 */
 	@Test
 	public void updateGlobalProperty_shouldUpdateGlobalPropertyInDatabase() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
 		String propertyValue = adminService.getGlobalProperty("a_valid_gp_key");
-		Assert.assertEquals("correct-value", propertyValue);
+		assertEquals("correct-value", propertyValue);
 		
 		adminService.updateGlobalProperty("a_valid_gp_key", "new-value");
 		
 		String newValue = adminService.getGlobalProperty("a_valid_gp_key");
-		Assert.assertEquals("new-value", newValue);
+		assertEquals("new-value", newValue);
 	}
 	
-	/**
-	 * @see AdministrationService#updateGlobalProperty(String,String)
-	 */
 	@Test(expected = IllegalStateException.class)
 	public void updateGlobalProperty_shouldFailIfGlobalPropertyBeingUpdatedDoesNotAlreadyExist() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		adminService.updateGlobalProperty("a_invalid_gp_key", "asdfsadfsafd");
 	}
 	
-	/**
-	 * @see AdministrationService#updateGlobalProperty(String,String)
-	 */
 	@Test
 	public void updateGlobalProperty_shouldUpdateAGlobalPropertyWhoseTypedvalueIsHandledByACustomDatatype() {
 		GlobalProperty gp = new GlobalProperty();
@@ -289,76 +247,61 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		gp.setDatatypeClassname(BooleanDatatype.class.getName());
 		gp.setValue(Boolean.FALSE);
 		adminService.saveGlobalProperty(gp);
-		Assert.assertEquals(adminService.getGlobalProperty("Flag"), "false");
+		assertEquals(adminService.getGlobalProperty("Flag"), "false");
 		
 		adminService.updateGlobalProperty("Flag", Boolean.TRUE.toString());
-		Assert.assertEquals(adminService.getGlobalProperty("Flag"), "true");
+		assertEquals(adminService.getGlobalProperty("Flag"), "true");
 	}
 	
-	/**
-	 * @see AdministrationService#setGlobalProperty(String,String)
-	 */
 	@Test
 	public void setGlobalProperty_shouldCreateGlobalPropertyInDatabase() {
 		String newKey = "new_gp_key";
 		
 		String initialValue = adminService.getGlobalProperty(newKey);
-		Assert.assertNull(initialValue); // ensure gp doesn't exist before test
+		assertNull(initialValue); // ensure gp doesn't exist before test
 		adminService.setGlobalProperty(newKey, "new_key");
 		
 		String newValue = adminService.getGlobalProperty(newKey);
-		Assert.assertNotNull(newValue);
+		assertNotNull(newValue);
 	}
 	
-	/**
-	 * @see AdministrationService#setGlobalProperty(String,String)
-	 */
 	@Test
 	public void setGlobalProperty_shouldOverwriteGlobalPropertyIfExists() {
 		
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
 		String propertyValue = adminService.getGlobalProperty("a_valid_gp_key");
-		Assert.assertEquals("correct-value", propertyValue);
+		assertEquals("correct-value", propertyValue);
 		
 		adminService.setGlobalProperty("a_valid_gp_key", "new-value");
 		
 		String newValue = adminService.getGlobalProperty("a_valid_gp_key");
-		Assert.assertEquals("new-value", newValue);
+		assertEquals("new-value", newValue);
 		
 	}
 	
-	/**
-	 * @see AdministrationService#setGlobalProperty(String,String)
-	 */
 	@Test
 	public void setGlobalProperty_shouldSaveAGlobalPropertyWhoseTypedValueIsHandledByACustomDatatype() {
 		
 		String newKey = "Flag";
 		String initialValue = adminService.getGlobalProperty(newKey);
-		Assert.assertNull(initialValue);
+		assertNull(initialValue);
 		
 		adminService.setGlobalProperty(newKey, Boolean.FALSE.toString());
-		Assert.assertEquals(adminService.getGlobalProperty("Flag"), "false");
+		assertEquals(adminService.getGlobalProperty("Flag"), "false");
 		
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalProperty(String,String)
-	 */
 	@Test
 	public void getGlobalProperty_shouldReturnDefaultValueIfPropertyNameDoesNotExist() {
 		String invalidKey = "asdfasdf";
 		String propertyValue = adminService.getGlobalProperty(invalidKey);
-		Assert.assertNull(propertyValue); // make sure there isn't a gp
+		assertNull(propertyValue); // make sure there isn't a gp
 		
 		String value = adminService.getGlobalProperty(invalidKey, "default");
-		Assert.assertEquals("default", value);
+		assertEquals("default", value);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertiesByPrefix(String)
-	 */
 	@Test
 	public void getGlobalPropertiesByPrefix_shouldReturnAllRelevantGlobalPropertiesInTheDatabase() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
@@ -366,314 +309,263 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		List<GlobalProperty> properties = adminService.getGlobalPropertiesByPrefix("fake.module.");
 		
 		for (GlobalProperty property : properties) {
-			Assert.assertTrue(property.getProperty().startsWith("fake.module."));
-			Assert.assertTrue(property.getPropertyValue().startsWith("correct-value"));
+			assertTrue(property.getProperty().startsWith("fake.module."));
+			assertTrue(property.getPropertyValue().startsWith("correct-value"));
 		}
 	}
 	
-	/**
-	 * @see AdministrationService#getAllowedLocales()
-	 */
 	@Test
 	public void getAllowedLocales_shouldNotFailIfNotGlobalPropertyForLocalesAllowedDefinedYet() {
-		Context.getAdministrationService().purgeGlobalProperty(
+		adminService.purgeGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST));
-		Context.getAdministrationService().getAllowedLocales();
+		adminService.getAllowedLocales();
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyByUuid(String)
-	 */
 	@Test
 	public void getGlobalPropertyByUuid_shouldFindObjectGivenValidUuid() {
 		String uuid = "4f55827e-26fe-102b-80cb-0017a47871b3";
-		GlobalProperty prop = Context.getAdministrationService().getGlobalPropertyByUuid(uuid);
-		Assert.assertEquals("locale.allowed.list", prop.getProperty());
+		GlobalProperty prop = adminService.getGlobalPropertyByUuid(uuid);
+		assertEquals("locale.allowed.list", prop.getProperty());
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyByUuid(String)
-	 */
 	@Test
 	public void getGlobalPropertyByUuid_shouldReturnNullIfNoObjectFoundWithGivenUuid() {
-		Assert.assertNull(Context.getAdministrationService().getGlobalPropertyByUuid("some invalid uuid"));
+		assertNull(adminService.getGlobalPropertyByUuid("some invalid uuid"));
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperties(List)
-	 */
 	@Test
 	public void saveGlobalProperties_shouldNotFailWithEmptyList() {
-		Context.getAdministrationService().saveGlobalProperties(new ArrayList<GlobalProperty>());
+		adminService.saveGlobalProperties(new ArrayList<>());
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperties(List)
-	 */
 	@Test
 	public void saveGlobalProperties_shouldSaveAllGlobalPropertiesToTheDatabase() {
 		// get the current global properties
-		List<GlobalProperty> globalProperties = Context.getAdministrationService().getAllGlobalProperties();
+		List<GlobalProperty> globalProperties = adminService.getAllGlobalProperties();
 		
 		// and now add some new ones to it
 		globalProperties.add(new GlobalProperty("new prop1", "new prop value1", "desc"));
 		globalProperties.add(new GlobalProperty("new prop2", "new prop value2", "desc"));
 		
-		Context.getAdministrationService().saveGlobalProperties(globalProperties);
+		adminService.saveGlobalProperties(globalProperties);
 		
-		Assert.assertEquals("new prop value1", Context.getAdministrationService().getGlobalProperty("new prop1"));
-		Assert.assertEquals("new prop value2", Context.getAdministrationService().getGlobalProperty("new prop2"));
+		assertEquals("new prop value1", adminService.getGlobalProperty("new prop1"));
+		assertEquals("new prop value2", adminService.getGlobalProperty("new prop2"));
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperties(List)
-	 */
 	@Test
 	public void saveGlobalProperties_shouldAssignUuidToAllNewProperties() {
 		// get the current global properties
-		List<GlobalProperty> globalProperties = Context.getAdministrationService().getAllGlobalProperties();
+		List<GlobalProperty> globalProperties = adminService.getAllGlobalProperties();
 		
 		// and now add a new one to it and save it
 		globalProperties.add(new GlobalProperty("new prop", "new prop value", "desc"));
-		Context.getAdministrationService().saveGlobalProperties(globalProperties);
+		adminService.saveGlobalProperties(globalProperties);
 		
-		Assert.assertNotNull(Context.getAdministrationService().getGlobalPropertyObject("new prop").getUuid());
+		assertNotNull(adminService.getGlobalPropertyObject("new prop").getUuid());
 	}
 	
-	/**
-	 * @see AdministrationService#getAllGlobalProperties()
-	 */
 	@Test
 	public void getAllGlobalProperties_shouldReturnAllGlobalPropertiesInTheDatabase() {
+		int allGlobalPropertiesSize = adminService.getAllGlobalProperties().size();
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		Assert.assertEquals(21, Context.getAdministrationService().getAllGlobalProperties().size());
+		assertEquals(allGlobalPropertiesSize + 9, adminService.getAllGlobalProperties().size());
 	}
 	
-	/**
-	 * @see AdministrationService#getAllowedLocales()
-	 */
 	@Test
 	public void getAllowedLocales_shouldReturnAtLeastOneLocaleIfNoLocalesDefinedInDatabaseYet() {
-		Assert.assertTrue(Context.getAdministrationService().getAllowedLocales().size() > 0);
+		assertTrue(adminService.getAllowedLocales().size() > 0);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyObject(String)
-	 */
 	@Test
 	public void getGlobalPropertyObject_shouldReturnNullWhenNoGlobalPropertyMatchGivenPropertyName() {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		Assert.assertNull(Context.getAdministrationService().getGlobalPropertyObject("magicResistSkill"));
+		assertNull(adminService.getGlobalPropertyObject("magicResistSkill"));
 	}
 	
-	/**
-	 * @see AdministrationService#getImplementationId()
-	 */
 	@Test
 	public void getImplementationId_shouldReturnNullIfNoImplementationIdIsDefinedYet() {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		Assert.assertNull(Context.getAdministrationService().getImplementationId());
+		assertNull(adminService.getImplementationId());
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	@Ignore
 	//TODO: This test fails for some reason
 	public void getPresentationLocales_shouldReturnAtLeastOneLocaleIfNoLocalesDefinedInDatabaseYet() {
-		Assert.assertTrue(Context.getAdministrationService().getPresentationLocales().size() > 0);
+		assertTrue(adminService.getPresentationLocales().size() > 0);
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldNotReturnMoreLocalesThanMessageSourceServiceLocales() {
-		Assert.assertFalse(Context.getAdministrationService().getPresentationLocales().size() > Context
+		assertFalse(adminService.getPresentationLocales().size() > Context
 		        .getMessageSourceService().getLocales().size());
 	}
 	
-	/**
-	 * @see AdministrationService#getSystemVariables()
-	 */
 	@Test
 	public void getSystemVariables_shouldReturnAllRegisteredSystemVariables() {
 		// The method implementation adds 11 system variables
-		Assert.assertEquals(11, Context.getAdministrationService().getSystemVariables().size());
+		assertEquals(11, adminService.getSystemVariables().size());
 	}
 	
-	/**
-	 * @see AdministrationService#purgeGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void purgeGlobalProperty_shouldDeleteGlobalPropertyFromDatabase() {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		AdministrationService as = Context.getAdministrationService();
-		
-		Assert.assertEquals(21, as.getAllGlobalProperties().size());
-		as.purgeGlobalProperty(as.getGlobalPropertyObject("a_valid_gp_key"));
-		Assert.assertEquals(20, as.getAllGlobalProperties().size());
+		int allGlobalPropertiesSize = adminService.getAllGlobalProperties().size();
+		adminService.purgeGlobalProperty(adminService.getGlobalPropertyObject("a_valid_gp_key"));
+		assertEquals(allGlobalPropertiesSize -1, adminService.getAllGlobalProperties().size());
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void saveGlobalProperty_shouldCreateGlobalPropertyInDatabase() {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		AdministrationService as = Context.getAdministrationService();
 		
-		as.saveGlobalProperty(new GlobalProperty("detectHiddenSkill", "100"));
-		Assert.assertNotNull(as.getGlobalProperty("detectHiddenSkill"));
+		adminService.saveGlobalProperty(new GlobalProperty("detectHiddenSkill", "100"));
+		assertNotNull(adminService.getGlobalProperty("detectHiddenSkill"));
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void saveGlobalProperty_shouldOverwriteGlobalPropertyIfExists() {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		AdministrationService as = Context.getAdministrationService();
 		
-		GlobalProperty gp = as.getGlobalPropertyObject("a_valid_gp_key");
-		Assert.assertEquals("correct-value", gp.getPropertyValue());
+		GlobalProperty gp = adminService.getGlobalPropertyObject("a_valid_gp_key");
+		assertEquals("correct-value", gp.getPropertyValue());
 		gp.setPropertyValue("new-even-more-correct-value");
-		as.saveGlobalProperty(gp);
-		Assert.assertEquals("new-even-more-correct-value", as.getGlobalProperty("a_valid_gp_key"));
+		adminService.saveGlobalProperty(gp);
+		assertEquals("new-even-more-correct-value", adminService.getGlobalProperty("a_valid_gp_key"));
 	}
 	
-	/**
-	 * @see AdministrationService#getAllowedLocales()
-	 */
+	@Test
+	public void saveGlobalProperty_shouldFailIfGivenAllowedLocaleListDoesNotContainDefaultLocale() {
+
+		String localeList = "fr,es";
+
+		assertThat("localeList contains default locale but should not for this test case", localeList,
+			not(containsString(LocaleUtility.getDefaultLocale().toString())));
+
+		expectedException.expect(APIException.class);
+		expectedException.expectMessage("can not be removed from allowed locales list because it is the default locale");
+		
+		adminService.saveGlobalProperty(
+			new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, localeList));
+	}
+
+	@Test
+	public void saveGlobalProperty_shouldFailIfDefaultLocaleNotInAllowedLocaleList() {
+
+		Locale defaultLocale = new Locale("fr");
+
+		expectedException.expect(APIException.class);
+		expectedException.expectMessage("is not in allowed locales list");
+
+		adminService.saveGlobalProperty(
+			new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_DEFAULT_LOCALE, defaultLocale.toString()));
+	}
+	
 	@Test
 	public void getAllowedLocales_shouldNotReturnDuplicatesEvenIfTheGlobalPropertyHasThem() {
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB,fr,es,en_GB"));
-		Assert.assertEquals(3, Context.getAdministrationService().getAllowedLocales().size());
+		assertEquals(3, adminService.getAllowedLocales().size());
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyValue()
-	 */
 	@Test
 	public void getGlobalPropertyValue_shouldReturnValueInTheSpecifiedIntegerType() {
 		// put the global property into the database
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
-		Object value = adminService.getGlobalPropertyValue("valid.integer", Integer.valueOf(4));
+		Object value = adminService.getGlobalPropertyValue("valid.integer", 4);
 		
-		Assert.assertTrue(value instanceof Integer);
-		Assert.assertEquals(Integer.valueOf(1234), value);
+		assertTrue(value instanceof Integer);
+		assertEquals(1234, value);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyValue()
-	 */
 	@Test
 	public void getGlobalPropertyValue_shouldReturnDefaultValueForMissingProperty() {
 		// put the global property into the database
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
-		Object value = adminService.getGlobalPropertyValue("does.not.exist", Integer.valueOf(1234));
+		Object value = adminService.getGlobalPropertyValue("does.not.exist", 1234);
 		
-		Assert.assertEquals(Integer.valueOf(1234), value);
+		assertEquals(1234, value);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalPropertyValue()
-	 */
 	@Test
 	public void getGlobalPropertyValue_shouldReturnValueInTheSpecifiedDoubleType() {
 		// put the global property into the database
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
-		Object retValue = adminService.getGlobalPropertyValue("valid.double", new Double(4.34));
+		Object retValue = adminService.getGlobalPropertyValue("valid.double", 4.34);
 		
-		Assert.assertTrue(retValue instanceof Double);
-		Assert.assertEquals(new Double(1234.54), retValue);
+		assertTrue(retValue instanceof Double);
+		assertEquals(1234.54, retValue);
 	}
 	
-	/**
-	 * @see AdministrationService#getGlobalProperty(String)
-	 */
 	@Test
 	public void getGlobalProperty_shouldGetPropertyInCaseInsensitiveWay() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
 		// sanity check
 		String orig = adminService.getGlobalProperty("another-global-property");
-		Assert.assertEquals("anothervalue", orig);
+		assertEquals("anothervalue", orig);
 		
 		// try to get a global property with invalid case
 		String noprop = adminService.getGlobalProperty("ANOTher-global-property");
-		Assert.assertEquals(orig, noprop);
+		assertEquals(orig, noprop);
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void saveGlobalProperty_shouldNotAllowDifferentPropertiesToHaveTheSameStringWithDifferentCase() {
 		executeDataSet("org/openmrs/api/include/AdministrationServiceTest-globalproperties.xml");
 		
 		// sanity check
 		String orig = adminService.getGlobalProperty("another-global-property");
-		Assert.assertEquals("anothervalue", orig);
+		assertEquals("anothervalue", orig);
 		
 		// should match current gp and update
 		GlobalProperty gp = new GlobalProperty("ANOTher-global-property", "somethingelse");
 		adminService.saveGlobalProperty(gp);
 		String prop = adminService.getGlobalProperty("ANOTher-global-property", "boo");
-		Assert.assertEquals("somethingelse", prop);
+		assertEquals("somethingelse", prop);
 		
 		orig = adminService.getGlobalProperty("another-global-property");
-		Assert.assertEquals("somethingelse", orig);
+		assertEquals("somethingelse", orig);
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperties(List<QGlobalProperty;>)
-	 */
 	@Test
 	public void saveGlobalProperties_shouldSavePropertiesWithCaseDifferenceOnly() {
 		int originalSize = adminService.getAllGlobalProperties().size();
 		
-		List<GlobalProperty> props = new ArrayList<GlobalProperty>();
+		List<GlobalProperty> props = new ArrayList<>();
 		props.add(new GlobalProperty("a.property.key", "something"));
 		props.add(new GlobalProperty("a.property.KEY", "somethingelse"));
 		adminService.saveGlobalProperties(props);
 		
 		// make sure that we now have two properties
 		props = adminService.getAllGlobalProperties();
-		Assert.assertEquals(originalSize + 1, props.size());
+		assertEquals(originalSize + 1, props.size());
 		
-		Assert.assertTrue(props.contains(adminService.getGlobalPropertyObject("a.property.KEY")));
+		assertTrue(props.contains(adminService.getGlobalPropertyObject("a.property.KEY")));
 	}
 	
-	/**
-	 * @see AdministrationService#purgeGlobalProperties(List)
-	 */
 	@Test
 	public void purgeGlobalProperties_shouldDeleteGlobalPropertiesFromDatabase() {
 		int originalSize = adminService.getAllGlobalProperties().size();
 		
-		List<GlobalProperty> props = new ArrayList<GlobalProperty>();
+		List<GlobalProperty> props = new ArrayList<>();
 		props.add(new GlobalProperty("a.property.key", "something"));
 		props.add(new GlobalProperty("a.property.KEY", "somethingelse"));
 		adminService.saveGlobalProperties(props);
 		int afterSaveSize = adminService.getAllGlobalProperties().size();
 		
-		Assert.assertEquals(originalSize + 1, afterSaveSize);
+		assertEquals(originalSize + 1, afterSaveSize);
 		
 		adminService.purgeGlobalProperties(props);
 		int afterPurgeSize = adminService.getAllGlobalProperties().size();
 		
-		Assert.assertEquals(originalSize, afterPurgeSize);
+		assertEquals(originalSize, afterPurgeSize);
 	}
 	
-	/**
-	 * @see AdministrationService#saveGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void saveGlobalProperty_shouldSaveAGlobalPropertyWhoseTypedValueIsHandledByACustomDatatype() {
 		GlobalProperty gp = new GlobalProperty();
@@ -681,16 +573,13 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		gp.setDatatypeClassname(DateDatatype.class.getName());
 		gp.setValue(new Date());
 		adminService.saveGlobalProperty(gp);
-		Assert.assertNotNull(gp.getValueReference());
+		assertNotNull(gp.getValueReference());
 	}
 	
-	/**
-	 * @see AdministrationService#getSearchLocales(User)
-	 */
 	@Test
 	public void getSearchLocales_shouldExcludeNotAllowedLocales() {
 		//given
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_US, en_GB, pl, es"));
 		
 		User user = Context.getAuthenticatedUser();
@@ -698,22 +587,19 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		Context.getUserService().saveUser(user);
 		
 		//when
-		List<Locale> searchLocales = Context.getAdministrationService().getSearchLocales();
+		List<Locale> searchLocales = adminService.getSearchLocales();
 		
 		//then
-		Assert.assertTrue("en_US", searchLocales.contains(new Locale("en", "US")));
-		Assert.assertTrue("pl", searchLocales.contains(new Locale("pl")));
-		Assert.assertTrue("es", searchLocales.contains(new Locale("es")));
-		Assert.assertFalse("es_CL", searchLocales.contains(new Locale("es", "CL")));
+		assertTrue("en_US", searchLocales.contains(new Locale("en", "US")));
+		assertTrue("pl", searchLocales.contains(new Locale("pl")));
+		assertTrue("es", searchLocales.contains(new Locale("es")));
+		assertFalse("es_CL", searchLocales.contains(new Locale("es", "CL")));
 	}
 	
-	/**
-	 * @see AdministrationService#getSearchLocales(User)
-	 */
 	@Test
 	public void getSearchLocales_shouldIncludeCurrentlySelectedFullLocaleAndLangugage() {
 		//given
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB"));
 		User user = Context.getAuthenticatedUser();
 		user.setUserProperty(OpenmrsConstants.USER_PROPERTY_PROFICIENT_LOCALES, "");
@@ -721,20 +607,17 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		Context.setLocale(new Locale("en", "GB"));
 		
 		//when
-		List<Locale> searchLocales = Context.getAdministrationService().getSearchLocales();
+		List<Locale> searchLocales = adminService.getSearchLocales();
 		
 		//then
-		Assert.assertEquals(Context.getLocale(), searchLocales.get(0));
-		Assert.assertEquals(new Locale(Context.getLocale().getLanguage()), searchLocales.get(1));
+		assertEquals(Context.getLocale(), searchLocales.get(0));
+		assertEquals(new Locale(Context.getLocale().getLanguage()), searchLocales.get(1));
 	}
 	
-	/**
-	 * @see AdministrationService#getSearchLocales(User)
-	 */
 	@Test
 	public void getSearchLocales_shouldIncludeUsersProficientLocales() {
 		//given
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, en_US, pl"));
 		
 		User user = Context.getAuthenticatedUser();
@@ -742,34 +625,27 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		Context.getUserService().saveUser(user);
 		
 		//when
-		List<Locale> searchLocales = Context.getAdministrationService().getSearchLocales();
+		List<Locale> searchLocales = adminService.getSearchLocales();
 		
 		//then
-		Assert.assertTrue("en_GB", searchLocales.contains(new Locale("en", "GB")));
-		Assert.assertTrue("en_US", searchLocales.contains(new Locale("en", "US")));
-		Assert.assertFalse("pl", searchLocales.contains(new Locale("pl")));
+		assertTrue("en_GB", searchLocales.contains(new Locale("en", "GB")));
+		assertTrue("en_US", searchLocales.contains(new Locale("en", "US")));
+		assertFalse("pl", searchLocales.contains(new Locale("pl")));
 	}
-	
-	/**
-	 * @see AdministrationService#validate(Object,Errors)
-	 */
 	
 	@Test(expected = APIException.class)
 	public void validate_shouldThrowThrowAPIExceptionIfTheInputIsNull() {
 		BindException errors = new BindException(new Object(), "");
-		Context.getAdministrationService().validate(null, errors);
+		adminService.validate(null, errors);
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldReturnOnlyCountryLocaleIfBothCountryLocaleAndLanguageLocaleAreSpecifiedInAllowedList()
 	        {
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, es, es_CL"));
 		
-		List<Locale> locales = new ArrayList<Locale>();
+		List<Locale> locales = new ArrayList<>();
 		locales.add(new Locale("pl", "PL"));
 		locales.add(new Locale("en"));
 		locales.add(new Locale("es"));
@@ -782,25 +658,22 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		MutableMessageSource mutableMessageSource = Context.getMessageSourceService().getActiveMessageSource();
 		Context.getMessageSourceService().setActiveMessageSource(mutableResourceBundleMessageSource);
 		
-		Set<Locale> presentationLocales = Context.getAdministrationService().getPresentationLocales();
+		Set<Locale> presentationLocales = adminService.getPresentationLocales();
 		
 		Context.getMessageSourceService().setActiveMessageSource(mutableMessageSource);
 		
-		Assert.assertEquals(2, presentationLocales.size());
-		Assert.assertTrue("en", presentationLocales.contains(new Locale("en")));
-		Assert.assertTrue("es_CL", presentationLocales.contains(new Locale("es", "CL")));
+		assertEquals(2, presentationLocales.size());
+		assertTrue("en", presentationLocales.contains(new Locale("en")));
+		assertTrue("es_CL", presentationLocales.contains(new Locale("es", "CL")));
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldReturnAllCountryLocalesIfLanguageLocaleAndNoCountryLocalesAreSpecifiedInAllowedList()
 	        {
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, es"));
 		
-		List<Locale> locales = new ArrayList<Locale>();
+		List<Locale> locales = new ArrayList<>();
 		locales.add(new Locale("pl", "PL"));
 		locales.add(new Locale("en"));
 		locales.add(new Locale("es"));
@@ -814,26 +687,23 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		MutableMessageSource mutableMessageSource = Context.getMessageSourceService().getActiveMessageSource();
 		Context.getMessageSourceService().setActiveMessageSource(mutableResourceBundleMessageSource);
 		
-		Set<Locale> presentationLocales = Context.getAdministrationService().getPresentationLocales();
+		Set<Locale> presentationLocales = adminService.getPresentationLocales();
 		
 		Context.getMessageSourceService().setActiveMessageSource(mutableMessageSource);
 		
-		Assert.assertEquals(3, presentationLocales.size());
-		Assert.assertTrue("es_CL", presentationLocales.contains(new Locale("es", "CL")));
-		Assert.assertTrue("es_SN", presentationLocales.contains(new Locale("es", "SN")));
-		Assert.assertTrue("en", presentationLocales.contains(new Locale("en")));
+		assertEquals(3, presentationLocales.size());
+		assertTrue("es_CL", presentationLocales.contains(new Locale("es", "CL")));
+		assertTrue("es_SN", presentationLocales.contains(new Locale("es", "SN")));
+		assertTrue("en", presentationLocales.contains(new Locale("en")));
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldReturnLanguageLocaleIfCountryLocaleIsSpecifiedInAllowedListButCountryLocaleMessageFileIsMissing()
 	        {
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, es_CL"));
 		
-		List<Locale> locales = new ArrayList<Locale>();
+		List<Locale> locales = new ArrayList<>();
 		locales.add(new Locale("pl", "PL"));
 		locales.add(new Locale("en"));
 		locales.add(new Locale("es"));
@@ -845,25 +715,22 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		MutableMessageSource mutableMessageSource = Context.getMessageSourceService().getActiveMessageSource();
 		Context.getMessageSourceService().setActiveMessageSource(mutableResourceBundleMessageSource);
 		
-		Set<Locale> presentationLocales = Context.getAdministrationService().getPresentationLocales();
+		Set<Locale> presentationLocales = adminService.getPresentationLocales();
 		
 		Context.getMessageSourceService().setActiveMessageSource(mutableMessageSource);
 		
-		Assert.assertEquals(2, presentationLocales.size());
-		Assert.assertTrue("en", presentationLocales.contains(new Locale("en")));
-		Assert.assertTrue("es", presentationLocales.contains(new Locale("es")));
+		assertEquals(2, presentationLocales.size());
+		assertTrue("en", presentationLocales.contains(new Locale("en")));
+		assertTrue("es", presentationLocales.contains(new Locale("es")));
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldReturnLanguageLocaleIfItIsSpecifiedInAllowedListAndThereAreNoCountryLocaleMessageFilesAvailable()
 	        {
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 		    new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, es"));
 		
-		List<Locale> locales = new ArrayList<Locale>();
+		List<Locale> locales = new ArrayList<>();
 		locales.add(new Locale("pl", "PL"));
 		locales.add(new Locale("en"));
 		locales.add(new Locale("es"));
@@ -875,27 +742,24 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		MutableMessageSource mutableMessageSource = Context.getMessageSourceService().getActiveMessageSource();
 		Context.getMessageSourceService().setActiveMessageSource(mutableResourceBundleMessageSource);
 		
-		Set<Locale> presentationLocales = Context.getAdministrationService().getPresentationLocales();
+		Set<Locale> presentationLocales = adminService.getPresentationLocales();
 		
 		Context.getMessageSourceService().setActiveMessageSource(mutableMessageSource);
 		
-		Assert.assertEquals(2, presentationLocales.size());
-		Assert.assertTrue("en", presentationLocales.contains(new Locale("en")));
-		Assert.assertTrue("es", presentationLocales.contains(new Locale("es")));
+		assertEquals(2, presentationLocales.size());
+		assertTrue("en", presentationLocales.contains(new Locale("en")));
+		assertTrue("es", presentationLocales.contains(new Locale("es")));
 	}
 	
-	/**
-	 * @see AdministrationService#getPresentationLocales()
-	 */
 	@Test
 	public void getPresentationLocales_shouldPreserveInsertionOrderInSetReturnedByMethod()
 			{
 		String globalPropertyLocaleListAllowedData = "en_GB, es, ja_JP, it_IT, pl_PL";
 		//The order of languages and locales is described above and should be followed bt `presentationLocales` Set
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 				new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, globalPropertyLocaleListAllowedData));
 		
-		List<Locale> locales = new ArrayList<Locale>();
+		List<Locale> locales = new ArrayList<>();
 		//Add data in random order and verify that order is maintained in the end by checking against order in global property
 		locales.add(new Locale("pl", "PL"));
 		locales.add(new Locale("es"));
@@ -909,24 +773,21 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		MutableMessageSource mutableMessageSource = Context.getMessageSourceService().getActiveMessageSource();
 		Context.getMessageSourceService().setActiveMessageSource(mutableResourceBundleMessageSource);
 		
-		List<Locale> presentationLocales = new ArrayList<Locale>(Context.getAdministrationService().getPresentationLocales());
+		List<Locale> presentationLocales = new ArrayList<>(adminService.getPresentationLocales());
 		
 		Context.getMessageSourceService().setActiveMessageSource(mutableMessageSource);
 		
 		//Assert Locales in expected order as set by global property
-		Assert.assertEquals(new Locale("en"), presentationLocales.get(0));
-		Assert.assertEquals(new Locale("es"), presentationLocales.get(1));
-		Assert.assertEquals(new Locale("it", "IT"), presentationLocales.get(2));
-		Assert.assertEquals(new Locale("pl", "PL"), presentationLocales.get(3));
+		assertEquals(new Locale("en"), presentationLocales.get(0));
+		assertEquals(new Locale("es"), presentationLocales.get(1));
+		assertEquals(new Locale("it", "IT"), presentationLocales.get(2));
+		assertEquals(new Locale("pl", "PL"), presentationLocales.get(3));
 	}
 
-	/**
-	 * @see AdministrationService#getSearchLocales()
-	 */
 	@Test
 	public void getSearchLocales_shouldCacheResultsForAnUser() {
 		//given
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 				new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, en_US, pl"));
 
 		User user = Context.getAuthenticatedUser();
@@ -934,7 +795,7 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		Context.getUserService().saveUser(user);
 
 		//when
-		Context.getAdministrationService().getSearchLocales();
+		adminService.getSearchLocales();
 
 		List<Locale> cachedSearchLocales = getCachedSearchLocalesForCurrentUser();
 
@@ -944,13 +805,10 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		assertThat(cachedSearchLocales, not(hasItem(new Locale("pl"))));
 	}
 
-	/**
-	 * @see AdministrationService#saveGlobalProperty(GlobalProperty)
-	 */
 	@Test
 	public void saveGlobalProperty_shouldEvictCachedResults() {
 		//given
-		Context.getAdministrationService().saveGlobalProperty(
+		adminService.saveGlobalProperty(
 				new GlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST, "en_GB, en_US, pl"));
 
 		User user = Context.getAuthenticatedUser();
@@ -958,12 +816,12 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		Context.getUserService().saveUser(user);
 
 		//sanity check that cache has been populated
-		Context.getAdministrationService().getSearchLocales();
+		adminService.getSearchLocales();
 		List<Locale> cachedSearchLocales = getCachedSearchLocalesForCurrentUser();
 		assertThat(cachedSearchLocales, hasItem(new Locale("en", "US")));
 
 		//evict cache
-		Context.getAdministrationService().saveGlobalProperty(new GlobalProperty("test", "TEST"));
+		adminService.saveGlobalProperty(new GlobalProperty("test", "TEST"));
 
 		assertThat(getCacheForCurrentUser(), nullValue());
 	}

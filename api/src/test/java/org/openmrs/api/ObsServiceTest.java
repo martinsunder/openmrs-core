@@ -642,14 +642,7 @@ public class ObsServiceTest extends BaseContextSensitiveTest {
 		ObsService os = Context.getObsService();
 		ConceptService cs = Context.getConceptService();
 		AdministrationService as = Context.getAdministrationService();
-		
-		// make sure the file isn't there to begin with
-		File complexObsDir = OpenmrsUtil.getDirectoryInApplicationDataDirectory(as
-		        .getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_COMPLEX_OBS_DIR));
-		File createdFile = new File(complexObsDir, "nameOfFile.txt");
-		if (createdFile.exists())
-			createdFile.delete();
-		
+				
 		// the complex data to put onto an obs that will be saved
 		Reader input = new CharArrayReader("This is a string to save to a file".toCharArray());
 		ComplexData complexData = new ComplexData("nameOfFile.txt", input);
@@ -660,6 +653,15 @@ public class ObsServiceTest extends BaseContextSensitiveTest {
 		
 		Obs obsToSave = new Obs(new Person(1), questionConcept, new Date(), new Location(1));
 		obsToSave.setComplexData(complexData);
+		
+		// make sure the file isn't there to begin with
+		String filename = "nameOfFile_" + obsToSave.getUuid() + ".txt";
+		File complexObsDir = OpenmrsUtil.getDirectoryInApplicationDataDirectory(as
+	        .getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_COMPLEX_OBS_DIR));
+		File createdFile = new File(complexObsDir, filename);
+		if (createdFile.exists()) {
+			createdFile.delete();
+		}
 		
 		try {
 			os.saveObs(obsToSave, null);
@@ -1178,7 +1180,7 @@ public class ObsServiceTest extends BaseContextSensitiveTest {
 		ObsService obsService = Context.getObsService();
 		
 		List<Obs> obss = obsService.getObservations(Collections.singletonList(new Person(7)), null, null, null, null, null,
-		    Arrays.asList(new String[] { "concept", "obsDatetime" }), null, null, null, null, false, null);
+		    Arrays.asList("concept", "obsDatetime"), null, null, null, null, false, null);
 		
 		// check the order of a few of the obs returned
 		Assert.assertEquals(11, obss.get(0).getObsId().intValue());
@@ -1197,7 +1199,7 @@ public class ObsServiceTest extends BaseContextSensitiveTest {
 		ObsService obsService = Context.getObsService();
 		
 		List<Obs> obss = obsService.getObservations(Collections.singletonList(new Person(8)), null, null, null, null, null,
-		    new ArrayList<String>(), null, null, null, null, false, null);
+				new ArrayList<>(), null, null, null, null, false, null);
 		
 		Assert.assertEquals(8, obss.get(0).getObsId().intValue());
 		Assert.assertEquals(7, obss.get(1).getObsId().intValue());
@@ -1360,7 +1362,7 @@ public class ObsServiceTest extends BaseContextSensitiveTest {
 		Encounter encounter = new Encounter(3);
 		Date datetime = new Date();
 		Location location = new Location(1);
-		Integer valueGroupId = Integer.valueOf(7);
+		Integer valueGroupId = 7;
 		Date valueDatetime = new Date();
 		Concept valueCoded = new Concept(3);
 		Double valueNumeric = 2.0;

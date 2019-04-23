@@ -54,19 +54,30 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+/**
+ * The MigrationHelper will be removed from openmrs-core. If you need the code migrate it to your code base.
+ * 
+ * @deprecated since 2.2.0
+ */
+@Deprecated
 public class MigrationHelper {
+
+	private MigrationHelper() {
+	}
 	
 	private static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
-	protected final static Logger log = LoggerFactory.getLogger(MigrationHelper.class);
+	private static final Logger log = LoggerFactory.getLogger(MigrationHelper.class);
 	
 	static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-	
-	
+
+	/**
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
+	 */
+	@Deprecated
 	public static Date parseDate(String s) throws ParseException {
 		if (s == null || s.length() == 0) {
 			return null;
@@ -78,25 +89,20 @@ public class MigrationHelper {
 			return df.parse(s);
 		}
 	}
-	
+
+	/**
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
+	 */
+	@Deprecated
 	public static Document parseXml(String xml) throws ParserConfigurationException {
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		try {
 			// Disable resolution of external entities. See TRUNK-3942 
-			builder.setEntityResolver(new EntityResolver() {
-				
-				@Override
-				public InputSource resolveEntity(String publicId, String systemId) {
-					return new InputSource(new StringReader(""));
-				}
-			});
+			builder.setEntityResolver((publicId, systemId) -> new InputSource(new StringReader("")));
 			
 			return builder.parse(new InputSource(new StringReader(xml)));
 		}
-		catch (IOException ex) {
-			return null;
-		}
-		catch (SAXException e) {
+		catch (IOException | SAXException ex) {
 			return null;
 		}
 	}
@@ -116,13 +122,16 @@ public class MigrationHelper {
 	 * Takes XML like: &lt;something&gt; &lt;user date_changed="2001-03-06 08:46:53.0"
 	 * date_created="2001-03-06 08:46:53.0" username="hamish@mit.edu" first_name="Hamish"
 	 * last_name="Fraser" user_id="2001"/&gt; &lt;/something&gt; Returns the number of users added
+	 * 
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
 	 */
+	@Deprecated
 	public static int importUsers(Document document) throws ParseException {
 		int ret = 0;
 		Random rand = new Random();
 		UserService us = Context.getUserService();
 		
-		List<Node> toAdd = new ArrayList<Node>();
+		List<Node> toAdd = new ArrayList<>();
 		findNodesNamed(document, "user", toAdd);
 		for (Node node : toAdd) {
 			Element e = (Element) node;
@@ -142,7 +151,7 @@ public class MigrationHelper {
 			user.setDateChanged(parseDate(e.getAttribute("date_changed")));
 			
 			// Generate a temporary password: 8-12 random characters
-			String pass = null;
+			String pass;
 			{
 				int length = rand.nextInt(4) + 8;
 				char[] password = new char[length];
@@ -161,11 +170,14 @@ public class MigrationHelper {
 	/**
 	 * Takes XML like: &lt;something&gt; &lt;location name="Cerca-la-Source"/&gt; &lt;/something&gt; returns the
 	 * number of locations added
+	 * 
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
 	 */
+	@Deprecated
 	public static int importLocations(Document document) {
 		int ret = 0;
 		LocationService ls = Context.getLocationService();
-		List<Node> toAdd = new ArrayList<Node>();
+		List<Node> toAdd = new ArrayList<>();
 		findNodesNamed(document, "location", toAdd);
 		for (Node node : toAdd) {
 			Element e = (Element) node;
@@ -194,15 +206,18 @@ public class MigrationHelper {
 	 * true, and no user exists with the given username, one will be created. If autoAddRole is
 	 * true, then whenever a user is auto-created, if a role exists with the same name as
 	 * relationshipType.name, then the user will be added to that role
+	 * 
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
 	 */
+	@Deprecated
 	public static int importRelationships(Collection<String> relationships, boolean autoCreateUsers, boolean autoAddRole) {
 		PatientService ps = Context.getPatientService();
 		UserService us = Context.getUserService();
 		PersonService personService = Context.getPersonService();
-		List<Relationship> relsToAdd = new ArrayList<Relationship>();
+		List<Relationship> relsToAdd = new ArrayList<>();
 		Random rand = new Random();
 		for (String s : relationships) {
-			if (s.indexOf(":") >= 0) {
+			if (s.contains(":")) {
 				s = s.substring(s.indexOf(":") + 1);
 			}
 			String[] ss = s.split(",");
@@ -242,7 +257,7 @@ public class MigrationHelper {
 				user.addName(pn);
 				user.setUsername(username);
 				// Generate a temporary password: 8-12 random characters
-				String pass = null;
+				String pass;
 				{
 					int length = rand.nextInt(4) + 8;
 					char[] password = new char[length];
@@ -287,13 +302,17 @@ public class MigrationHelper {
 		}
 		return addedSoFar;
 	}
-	
+
+	/**
+	 * @deprecated since 2.2.0 migrate the method to your code base if needed
+	 */
+	@Deprecated
 	public static int importProgramsAndStatuses(List<String> programWorkflow) throws ParseException {
 		ProgramWorkflowService pws = Context.getProgramWorkflowService();
 		PatientService ps = Context.getPatientService();
-		List<PatientProgram> patientPrograms = new ArrayList<PatientProgram>();
-		Map<String, PatientProgram> knownPatientPrograms = new HashMap<String, PatientProgram>();
-		Map<String, Program> programsByName = new HashMap<String, Program>();
+		List<PatientProgram> patientPrograms = new ArrayList<>();
+		Map<String, PatientProgram> knownPatientPrograms = new HashMap<>();
+		Map<String, Program> programsByName = new HashMap<>();
 		for (Program program : pws.getAllPrograms()) {
 			programsByName.put(program.getConcept().getName(Context.getLocale(), false).getName(), program);
 		}

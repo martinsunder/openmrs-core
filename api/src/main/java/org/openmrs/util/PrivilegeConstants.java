@@ -21,7 +21,10 @@ import org.openmrs.annotation.HasAddOnStartupPrivileges;
  */
 @HasAddOnStartupPrivileges
 public class PrivilegeConstants {
-	
+
+	private PrivilegeConstants() {
+	}
+
 	@AddOnStartup(description = "Able to get concept entries")
 	public static final String GET_CONCEPTS = "Get Concepts";
 	
@@ -547,5 +550,23 @@ public class PrivilegeConstants {
 	public static final String MANAGE_CONCEPT_ATTRIBUTE_TYPES = "Manage Concept Attribute Types";
 
 	public static final String PURGE_CONCEPT_ATTRIBUTE_TYPES = "Purge Concept Attribute Types";
+
+	@AddOnStartup(description = "Able to edit conditions")
+	public static final String EDIT_CONDITIONS = "Edit Conditions";
+
+	@AddOnStartup(description = "Able to get conditions")
+	public static final String GET_CONDITIONS = "Get Conditions";
+
+	@AddOnStartup(description = "Able to delete conditions")
+	public static final String DELETE_CONDITIONS = "Delete Conditions";
+
+	@AddOnStartup(description = "Able to edit diagnoses")
+	public static final String EDIT_DIAGNOSES = "Edit Diagnoses";
+
+	@AddOnStartup(description = "Able to get diagnoses")
+	public static final String GET_DIAGNOSES = "Get Diagnoses";
+
+	@AddOnStartup(description = "Able to delete diagnoses")
+	public static final String DELETE_DIAGNOSES = "Delete Diagnoses";
 
 }

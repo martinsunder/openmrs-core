@@ -34,7 +34,7 @@ import org.springframework.core.type.filter.TypeFilter;
  */
 public class OpenmrsClassScanner {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(OpenmrsClassScanner.class);
 	
 	private final MetadataReaderFactory metadataReaderFactory;
 	
@@ -75,10 +75,10 @@ public class OpenmrsClassScanner {
 				return annotationToClassMap.get(annotationClass);
 			}
 		} else {
-			annotationToClassMap = new HashMap<Class<?>, Set<Class<?>>>();
+			annotationToClassMap = new HashMap<>();
 		}
 		
-		Set<Class<?>> types = new HashSet<Class<?>>();
+		Set<Class<?>> types = new HashSet<>();
 		String pattern = "classpath*:org/openmrs/**/*.class";
 		
 		try {
@@ -90,7 +90,7 @@ public class OpenmrsClassScanner {
 					if (typeFilter.match(metadataReader, metadataReaderFactory)) {
 						String classname = metadataReader.getClassMetadata().getClassName();
 						try {
-							Class<?> metadata = (Class<?>) OpenmrsClassLoader.getInstance().loadClass(classname);
+							Class<?> metadata = OpenmrsClassLoader.getInstance().loadClass(classname);
 							types.add(metadata);
 						}
 						catch (ClassNotFoundException e) {
@@ -118,6 +118,9 @@ public class OpenmrsClassScanner {
 	 * collection can happen correctly.
 	 */
 	private static class OpenmrsClassScannerHolder {
+
+		private OpenmrsClassScannerHolder() {
+		}
 		
 		private static OpenmrsClassScanner INSTANCE = null;
 	}

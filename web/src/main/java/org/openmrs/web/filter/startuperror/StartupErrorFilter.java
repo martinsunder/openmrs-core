@@ -34,8 +34,6 @@ import org.openmrs.module.ModuleUtil;
 import org.openmrs.module.OpenmrsCoreModuleException;
 import org.openmrs.web.Listener;
 import org.openmrs.web.filter.StartupFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This is the second filter that is processed. It is only active when OpenMRS has some liquibase
@@ -43,9 +41,7 @@ import org.slf4j.LoggerFactory;
  * authenticate and review the updates before continuing.
  */
 public class StartupErrorFilter extends StartupFilter {
-	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
-	
+
 	/**
 	 * The velocity macro page to redirect to if an error occurs or on initial startup
 	 */
@@ -62,9 +58,9 @@ public class StartupErrorFilter extends StartupFilter {
 	        ServletException {
 		
 		if (getModel().errorAtStartup instanceof OpenmrsCoreModuleException) {
-			renderTemplate("coremoduleerror.vm", new HashMap<String, Object>(), httpResponse);
+			renderTemplate("coremoduleerror.vm", new HashMap<>(), httpResponse);
 		} else {
-			renderTemplate(DEFAULT_PAGE, new HashMap<String, Object>(), httpResponse);
+			renderTemplate(DEFAULT_PAGE, new HashMap<>(), httpResponse);
 		}
 	}
 	
@@ -99,7 +95,7 @@ public class StartupErrorFilter extends StartupFilter {
 				Context.closeSession();
 			}
 			
-			Map<String, Object> map = new HashMap<String, Object>();
+			Map<String, Object> map = new HashMap<>();
 			map.put("success", Boolean.TRUE);
 			renderTemplate("coremoduleerror.vm", map, httpResponse);
 			

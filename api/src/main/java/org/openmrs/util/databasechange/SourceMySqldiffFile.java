@@ -17,8 +17,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -48,7 +50,7 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 	
 	public static final String CONNECTION_PASSWORD = "connection.password";
 	
-	private static Logger log = LoggerFactory.getLogger(SourceMySqldiffFile.class);
+	private static final Logger log = LoggerFactory.getLogger(SourceMySqldiffFile.class);
 	
 	/**
 	 * Absolute path and name of file to source
@@ -102,7 +104,7 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 		}
 		
 		// build the mysql command line string
-		List<String> commands = new ArrayList<String>();
+		List<String> commands = new ArrayList<>();
 		String databaseName;
 		try {
 			commands.add("mysql");
@@ -143,7 +145,7 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 			throw new CustomChangeException("Error while executing command: '" + commands.get(0) + "'", e);
 		}
 		
-		log.debug("Exec called: " + Arrays.asList(commands));
+		log.debug("Exec called: " + Collections.singletonList(commands));
 		
 		if (exitValue != 0) {
 			log.error("There was an error while running the " + commands.get(0) + " command.  Command output: "
@@ -193,7 +195,7 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 	private Integer execCmd(File wd, String[] cmdWithArguments, StringBuilder out) throws Exception {
 		log.debug("executing command: " + Arrays.toString(cmdWithArguments));
 		
-		Integer exitValue = -1;
+		Integer exitValue;
 		
 		// Needed to add support for working directory because of a linux
 		// file system permission issue.
@@ -206,9 +208,9 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 		    cmdWithArguments);
 		
 		out.append("Normal cmd output:\n");
-		Reader reader = new InputStreamReader(p.getInputStream());
+		Reader reader = new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8);
 		BufferedReader input = new BufferedReader(reader);
-		int readChar = 0;
+		int readChar;
 		while ((readChar = input.read()) != -1) {
 			out.append((char) readChar);
 		}
@@ -216,9 +218,8 @@ public class SourceMySqldiffFile implements CustomTaskChange {
 		reader.close();
 		
 		out.append("ErrorStream cmd output:\n");
-		reader = new InputStreamReader(p.getErrorStream());
+		reader = new InputStreamReader(p.getErrorStream(), StandardCharsets.UTF_8);
 		input = new BufferedReader(reader);
-		readChar = 0;
 		while ((readChar = input.read()) != -1) {
 			out.append((char) readChar);
 		}

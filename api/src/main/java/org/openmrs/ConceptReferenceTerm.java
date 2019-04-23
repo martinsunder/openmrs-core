@@ -23,7 +23,7 @@ import org.hibernate.search.annotations.Field;
  *
  * @since 1.9
  */
-public class ConceptReferenceTerm extends BaseOpenmrsMetadata {
+public class ConceptReferenceTerm extends BaseChangeableOpenmrsMetadata {
 	
 	private static final long serialVersionUID = 1L;
 	
@@ -124,7 +124,7 @@ public class ConceptReferenceTerm extends BaseOpenmrsMetadata {
 	 */
 	public Set<ConceptReferenceTermMap> getConceptReferenceTermMaps() {
 		if (conceptReferenceTermMaps == null) {
-			conceptReferenceTermMaps = new LinkedHashSet<ConceptReferenceTermMap>();
+			conceptReferenceTermMaps = new LinkedHashSet<>();
 		}
 		return conceptReferenceTermMaps;
 	}
@@ -168,7 +168,7 @@ public class ConceptReferenceTerm extends BaseOpenmrsMetadata {
 			//can't map a term to itself
 			conceptReferenceTermMap.setTermA(this);
 			if (conceptReferenceTermMaps == null) {
-				conceptReferenceTermMaps = new LinkedHashSet<ConceptReferenceTermMap>();
+				conceptReferenceTermMaps = new LinkedHashSet<>();
 			}
 			if (!conceptReferenceTermMaps.contains(conceptReferenceTermMap)) {
 				conceptReferenceTermMaps.add(conceptReferenceTermMap);

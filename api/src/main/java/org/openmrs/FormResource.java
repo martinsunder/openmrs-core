@@ -31,7 +31,9 @@ import org.openmrs.customdatatype.SingleCustomValue;
  * @since 1.9
  */
 public class FormResource extends BaseOpenmrsObject implements CustomValueDescriptor, SingleCustomValue<FormResource> {
-	
+
+	private static final long serialVersionUID = 1L;
+
 	private Integer formResourceId;
 	
 	private Form form;
@@ -229,7 +231,7 @@ public class FormResource extends BaseOpenmrsObject implements CustomValueDescri
 	 * @see org.openmrs.customdatatype.SingleCustomValue#getValue()
 	 */
 	@Override
-	public Object getValue() throws InvalidCustomValueException {
+	public Object getValue(){
 		if (typedValue == null) {
 			typedValue = CustomDatatypeUtil.getDatatype(this).fromReferenceString(getValueReference());
 		}
@@ -240,7 +242,7 @@ public class FormResource extends BaseOpenmrsObject implements CustomValueDescri
 	 * @see org.openmrs.customdatatype.SingleCustomValue#setValue(java.lang.Object)
 	 */
 	@Override
-	public <T> void setValue(T typedValue) throws InvalidCustomValueException {
+	public <T> void setValue(T typedValue)  {
 		this.typedValue = typedValue;
 		dirty = true;
 	}
@@ -249,7 +251,7 @@ public class FormResource extends BaseOpenmrsObject implements CustomValueDescri
 	 * @see org.openmrs.customdatatype.SingleCustomValue#setValueReferenceInternal(java.lang.String)
 	 */
 	@Override
-	public void setValueReferenceInternal(String valueToPersist) throws InvalidCustomValueException {
+	public void setValueReferenceInternal(String valueToPersist)  {
 		this.valueReference = valueToPersist;
 	}
 	

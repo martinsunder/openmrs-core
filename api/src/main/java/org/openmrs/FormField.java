@@ -9,6 +9,7 @@
  */
 package org.openmrs;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
@@ -21,7 +22,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
  * @see org.openmrs.Form
  * @see org.openmrs.Field
  */
-public class FormField extends BaseOpenmrsMetadata implements java.io.Serializable, Comparable<FormField> {
+public class FormField extends BaseChangeableOpenmrsMetadata implements java.io.Serializable, Comparable<FormField> {
 	
 	public static final long serialVersionUID = 3456L;
 	
@@ -203,7 +204,7 @@ public class FormField extends BaseOpenmrsMetadata implements java.io.Serializab
 	 * @return same as isRequired()
 	 */
 	public Boolean getRequired() {
-		return required == null ? false : required;
+		return required == null ? Boolean.FALSE : required;
 	}
 	
 	/**
@@ -268,7 +269,9 @@ public class FormField extends BaseOpenmrsMetadata implements java.io.Serializab
 	 Provides a default comparator.
 	 @since 1.12
 	 **/
-	public static class DefaultComparator implements Comparator<FormField> {
+	public static class DefaultComparator implements Comparator<FormField>, Serializable {
+
+		private static final long serialVersionUID = 1L;
 		
 		@Override
 		public int compare(FormField ff1, FormField ff2) {

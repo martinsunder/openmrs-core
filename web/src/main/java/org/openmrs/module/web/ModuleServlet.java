@@ -28,7 +28,7 @@ public class ModuleServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 1239820102030303L;
 	
-	private Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(ModuleServlet.class);
 	
 	@Override
 	protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -43,8 +43,9 @@ public class ModuleServlet extends HttpServlet {
 		
 		log.debug("ModuleId: " + moduleId);
 		Module mod = ModuleFactory.getModuleById(moduleId);
-		
-		int start = 1; // where in the path to start trimming
+		 
+		// where in the path to start trimming
+		int start = 1;
 		if (mod != null) {
 			log.debug("Module with id " + moduleId + " found.  Looking for servlet name after " + moduleId + " in url path");
 			start = moduleId.length() + 2;

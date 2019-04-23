@@ -19,7 +19,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,7 +26,6 @@ import java.util.TreeSet;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openmrs.GlobalProperty;
 import org.openmrs.Person;
@@ -264,7 +262,7 @@ public class ProviderServiceTest extends BaseContextSensitiveTest {
 	public void saveProvider_shouldSaveAProviderWithPersonAlone() {
 		Provider provider = new Provider();
 		provider.setIdentifier("unique");
-		Person person = Context.getPersonService().getPerson(Integer.valueOf(999));
+		Person person = Context.getPersonService().getPerson(999);
 		provider.setPerson(person);
 		service.saveProvider(provider);
 		Assert.assertNotNull(provider.getId());
@@ -469,10 +467,9 @@ public class ProviderServiceTest extends BaseContextSensitiveTest {
 		assertEquals(1, service.getCountOfProviders("Hippo").intValue());
 		Person person = Context.getPersonService().getPerson(502);
 		Set<PersonName> names = person.getNames();
-		for (Iterator<PersonName> iterator = names.iterator(); iterator.hasNext();) {
-			PersonName name = iterator.next();
+		for (PersonName name : names) {
 			name.setVoided(true);
-			
+
 		}
 		PersonName personName = new PersonName("Hippot", "A", "B");
 		personName.setPreferred(true);
@@ -480,12 +477,11 @@ public class ProviderServiceTest extends BaseContextSensitiveTest {
 		Context.getPersonService().savePerson(person);
 		assertEquals(1, service.getCountOfProviders("Hippo").intValue());
 	}
-	
+
 	/**
 	 * @see ProviderService#getCountOfProviders(String)
 	 */
 	@Test
-	@Ignore
 	public void getCountOfProviders_shouldExcludeRetiredProviders() {
 		assertEquals(2, service.getCountOfProviders("provider").intValue());
 	}
@@ -494,9 +490,8 @@ public class ProviderServiceTest extends BaseContextSensitiveTest {
 	 * @see ProviderService#getCountOfProviders(String,null)
 	 */
 	@Test
-	@Ignore
 	public void getCountOfProviders_shouldIncludeRetiredProvidersIfIncludeRetiredIsSetToTrue() {
-		assertEquals(4, service.getCountOfProviders("provider").intValue());
+		assertEquals(4, service.getCountOfProviders("provider", true).intValue());
 	}
 	
 	/**

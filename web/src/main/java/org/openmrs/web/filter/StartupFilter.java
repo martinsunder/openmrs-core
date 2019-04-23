@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -32,7 +33,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
@@ -66,7 +67,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class StartupFilter implements Filter {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(StartupFilter.class);
 	
 	protected static VelocityEngine velocityEngine = null;
 	
@@ -81,12 +82,12 @@ public abstract class StartupFilter implements Filter {
 	/**
 	 * Records errors that will be displayed to the user
 	 */
-	protected Map<String, Object[]> errors = new HashMap<String, Object[]>();
+	protected Map<String, Object[]> errors = new HashMap<>();
 	
 	/**
 	 * Messages that will be displayed to the user
 	 */
-	protected Map<String, Object[]> msgs = new HashMap<String, Object[]>();
+	protected Map<String, Object[]> msgs = new HashMap<>();
 	
 	/**
 	 * Used for configuring tools within velocity toolbox
@@ -231,8 +232,8 @@ public abstract class StartupFilter implements Filter {
 		}
 		
 		Object locale = referenceMap.get(FilterUtil.LOCALE_ATTRIBUTE);
-		ToolContext toolContext = getToolContext(locale != null ? locale.toString() : Context.getLocale().toString());
-		VelocityContext velocityContext = new VelocityContext(toolContext);
+		ToolContext velocityToolContext = getToolContext(locale != null ? locale.toString() : Context.getLocale().toString());
+		VelocityContext velocityContext = new VelocityContext(velocityToolContext);
 		
 		for (Map.Entry<String, Object> entry : referenceMap.entrySet()) {
 			velocityContext.put(entry.getKey(), entry.getValue());
@@ -246,10 +247,7 @@ public abstract class StartupFilter implements Filter {
 				field.setAccessible(true);
 				velocityContext.put(field.getName(), field.get(model));
 			}
-			catch (IllegalArgumentException e) {
-				log.error("Error generated while getting field value: " + field.getName(), e);
-			}
-			catch (IllegalAccessException e) {
+			catch (IllegalArgumentException | IllegalAccessException e) {
 				log.error("Error generated while getting field value: " + field.getName(), e);
 			}
 		}
@@ -268,10 +266,10 @@ public abstract class StartupFilter implements Filter {
 		
 		try {
 			velocityEngine.evaluate(velocityContext, httpResponse.getWriter(), this.getClass().getName(),
-			    new InputStreamReader(templateInputStream));
+			    new InputStreamReader(templateInputStream, StandardCharsets.UTF_8));
 		}
 		catch (Exception e) {
-			throw new RuntimeException("Unable to process template: " + fullTemplatePath, e);
+			throw new APIException("Unable to process template: " + fullTemplatePath, e);
 		}
 	}
 	

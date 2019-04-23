@@ -12,7 +12,7 @@ package org.openmrs;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.annotation.Independent;
 import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
@@ -22,7 +22,7 @@ import org.openmrs.api.context.Context;
  * Radiology TestOrders
  *
  */
-public class OrderType extends BaseOpenmrsMetadata {
+public class OrderType extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 23232L;
 	
@@ -132,7 +132,7 @@ public class OrderType extends BaseOpenmrsMetadata {
 	 */
 	public Collection<ConceptClass> getConceptClasses() {
 		if (conceptClasses == null) {
-			conceptClasses = new LinkedHashSet<ConceptClass>();
+			conceptClasses = new LinkedHashSet<>();
 		}
 		return conceptClasses;
 	}
@@ -151,7 +151,7 @@ public class OrderType extends BaseOpenmrsMetadata {
 	 * @return The Java class as {@link java.lang.Class}
 	 * @throws APIException
 	 */
-	public Class getJavaClass() throws APIException {
+	public Class getJavaClass() {
 		try {
 			return Context.loadClass(javaClassName);
 		}

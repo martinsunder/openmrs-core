@@ -92,8 +92,7 @@ public class OrderSetServiceImpl extends BaseOpenmrsService implements OrderSetS
 	@Override
 	@Transactional(readOnly = true)
 	public List<OrderSet> getOrderSets(boolean includeRetired) throws APIException {
-		List<OrderSet> orderSets = dao.getOrderSets(includeRetired);
-		return orderSets;
+		return dao.getOrderSets(includeRetired);
 	}
 	
 	/**
@@ -121,5 +120,5 @@ public class OrderSetServiceImpl extends BaseOpenmrsService implements OrderSetS
 	@Transactional(readOnly = true)
 	public OrderSetMember getOrderSetMemberByUuid(String uuid) {
 		return dao.getOrderSetMemberByUuid(uuid);
-	};
+	}
 }

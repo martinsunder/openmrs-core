@@ -24,6 +24,8 @@ import org.openmrs.customdatatype.SingleCustomValue;
  */
 public class GlobalProperty extends BaseOpenmrsObject implements CustomValueDescriptor, SingleCustomValue<GlobalProperty> {
 	
+	private static final long serialVersionUID = 1L;
+	
 	private String property = "";
 	
 	private String propertyValue = "";
@@ -265,7 +267,7 @@ public class GlobalProperty extends BaseOpenmrsObject implements CustomValueDesc
 	 * @since 1.9
 	 */
 	@Override
-	public void setValueReferenceInternal(String valueToPersist) throws InvalidCustomValueException {
+	public void setValueReferenceInternal(String valueToPersist) {
 		setPropertyValue(valueToPersist);
 	}
 	
@@ -275,7 +277,7 @@ public class GlobalProperty extends BaseOpenmrsObject implements CustomValueDesc
 	 * @since 1.9
 	 */
 	@Override
-	public Object getValue() throws InvalidCustomValueException {
+	public Object getValue() {
 		if (typedValue == null) {
 			typedValue = CustomDatatypeUtil.getDatatypeOrDefault(this).fromReferenceString(getValueReference());
 		}
@@ -288,7 +290,7 @@ public class GlobalProperty extends BaseOpenmrsObject implements CustomValueDesc
 	 * @since 1.9
 	 */
 	@Override
-	public <T> void setValue(T typedValue) throws InvalidCustomValueException {
+	public <T> void setValue(T typedValue){
 		this.typedValue = typedValue;
 		dirty = true;
 	}

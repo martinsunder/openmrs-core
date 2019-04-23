@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.api.APIException;
 import org.openmrs.api.SerializationService;
 import org.openmrs.api.context.Context;
@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SerializationServiceImpl extends BaseOpenmrsService implements SerializationService {
 	
-	public Logger log = LoggerFactory.getLogger(this.getClass());
+	private static final Logger log = LoggerFactory.getLogger(SerializationServiceImpl.class);
 	
 	//***** Properties (set by spring)
 	private static Map<Class<? extends OpenmrsSerializer>, OpenmrsSerializer> serializerMap;
@@ -101,7 +101,7 @@ public class SerializationServiceImpl extends BaseOpenmrsService implements Seri
 	 *      java.lang.Class)
 	 */
 	@Override
-	public <T extends Object> T deserialize(String serializedObject, Class<? extends T> objectClass,
+	public <T> T deserialize(String serializedObject, Class<? extends T> objectClass,
 	        Class<? extends OpenmrsSerializer> serializerClass) throws SerializationException {
 		
 		// Get appropriate OpenmrsSerializer implementation
@@ -112,7 +112,7 @@ public class SerializationServiceImpl extends BaseOpenmrsService implements Seri
 		
 		// Attempt to Deserialize the object
 		try {
-			return (T) serializer.deserialize(serializedObject, objectClass);
+			return serializer.deserialize(serializedObject, objectClass);
 		}
 		catch (Exception e) {
 			String msg = "An error occurred during deserialization of data <" + serializedObject + ">";
@@ -128,9 +128,9 @@ public class SerializationServiceImpl extends BaseOpenmrsService implements Seri
 	@Override
 	public List<? extends OpenmrsSerializer> getSerializers() {
 		if (serializerMap == null) {
-			serializerMap = new LinkedHashMap<Class<? extends OpenmrsSerializer>, OpenmrsSerializer>();
+			serializerMap = new LinkedHashMap<>();
 		}
-		return new ArrayList<OpenmrsSerializer>(serializerMap.values());
+		return new ArrayList<>(serializerMap.values());
 	}
 	
 	public static void setSerializerMap(Map<Class<? extends OpenmrsSerializer>, OpenmrsSerializer> serializerMap) {
@@ -143,7 +143,7 @@ public class SerializationServiceImpl extends BaseOpenmrsService implements Seri
 	 */
 	public void setSerializers(List<? extends OpenmrsSerializer> serializers) {
 		if (serializers == null || serializerMap == null) {
-			setSerializerMap(new LinkedHashMap<Class<? extends OpenmrsSerializer>, OpenmrsSerializer>());
+			setSerializerMap(new LinkedHashMap<>());
 		}
 		if (serializers != null) {
 			for (OpenmrsSerializer s : serializers) {

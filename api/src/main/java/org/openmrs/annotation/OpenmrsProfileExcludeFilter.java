@@ -12,7 +12,7 @@ package org.openmrs.annotation;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.module.Module;
 import org.openmrs.module.ModuleFactory;
 import org.openmrs.module.ModuleUtil;
@@ -65,7 +65,7 @@ public class OpenmrsProfileExcludeFilter implements TypeFilter {
 
 		for (String moduleAndVersion : modules) {
 			if ("!".equals(moduleAndVersion.substring(0, 1))) {
-				if (ModuleFactory.isModuleStarted(moduleAndVersion.substring(1, moduleAndVersion.length()))) {
+				if (ModuleFactory.isModuleStarted(moduleAndVersion.substring(1))) {
 					return false;
 				}
 			}

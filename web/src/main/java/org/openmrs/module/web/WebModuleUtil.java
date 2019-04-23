@@ -23,6 +23,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
@@ -70,29 +71,30 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 public class WebModuleUtil {
+
+	private WebModuleUtil() {
+	}
 	
-	private static Logger log = LoggerFactory.getLogger(WebModuleUtil.class);
+	private static final Logger log = LoggerFactory.getLogger(WebModuleUtil.class);
 	
 	private static DispatcherServlet dispatcherServlet = null;
 	
 	private static StaticDispatcherServlet staticDispatcherServlet = null;
 	
 	// caches all of the modules' mapped servlets
-	private static Map<String, HttpServlet> moduleServlets = Collections.synchronizedMap(new HashMap<String, HttpServlet>());
+	private static Map<String, HttpServlet> moduleServlets = Collections.synchronizedMap(new HashMap<>());
 	
 	// caches all of the module loaded filters and filter-mappings
 	private static Map<Module, Collection<Filter>> moduleFilters = Collections
-	        .synchronizedMap(new HashMap<Module, Collection<Filter>>());
+	        .synchronizedMap(new HashMap<>());
 	
-	private static Map<String, Filter> moduleFiltersByName = Collections.synchronizedMap(new HashMap<String, Filter>());
+	private static Map<String, Filter> moduleFiltersByName = Collections.synchronizedMap(new HashMap<>());
 	
 	private static List<ModuleFilterMapping> moduleFilterMappings = Collections
-	        .synchronizedList(new Vector<ModuleFilterMapping>());
+	        .synchronizedList(new Vector<>());
 	
 	/**
 	 * Performs the webapp specific startup needs for modules Normal startup is done in
@@ -167,7 +169,7 @@ public class WebModuleUtil {
 						
 						// if a module id has a . in it, we should treat that as a /, i.e. files in the module
 						// ui.springmvc should go in folder names like .../ui/springmvc/...
-						absPath.append(mod.getModuleIdAsPath() + "/" + filepath);
+						absPath.append(mod.getModuleIdAsPath()).append("/").append(filepath);
 						if (log.isDebugEnabled()) {
 							log.debug("Moving file from: " + name + " to " + absPath);
 						}
@@ -448,7 +450,7 @@ public class WebModuleUtil {
 				continue;
 			}
 			
-			HttpServlet httpServlet = null;
+			HttpServlet httpServlet;
 			try {
 				httpServlet = (HttpServlet) ModuleFactory.getModuleClassLoader(mod).loadClass(className).newInstance();
 			}
@@ -504,7 +506,7 @@ public class WebModuleUtil {
 		for (int i = 0; i < servletTags.getLength(); i++) {
 			Node node = servletTags.item(i);
 			NodeList childNodes = node.getChildNodes();
-			String name = "";
+			String name;
 			for (int j = 0; j < childNodes.getLength(); j++) {
 				Node childNode = childNodes.item(j);
 				if ("servlet-name".equals(childNode.getNodeName()) && childNode.getTextContent() != null) {
@@ -528,7 +530,7 @@ public class WebModuleUtil {
 	public static void loadFilters(Module module, ServletContext servletContext) {
 		
 		// Load Filters
-		Map<String, Filter> filters = new HashMap<String, Filter>();
+		Map<String, Filter> filters = new HashMap<>();
 		try {
 			for (ModuleFilterDefinition def : ModuleFilterDefinition.retrieveFilterDefinitions(module)) {
 				if (moduleFiltersByName.containsKey(def.getFilterName())) {
@@ -587,13 +589,8 @@ public class WebModuleUtil {
 			}
 			log.debug("Module: " + module.getModuleId() + " successfully unloaded " + filters.size() + " filters.");
 			moduleFilters.remove(module);
-			
-			for (Iterator<Filter> i = moduleFiltersByName.values().iterator(); i.hasNext();) {
-				Filter filterVal = i.next();
-				if (filters.contains(filterVal)) {
-					i.remove();
-				}
-			}
+
+			moduleFiltersByName.values().removeIf(filters::contains);
 		}
 	}
 	
@@ -625,7 +622,7 @@ public class WebModuleUtil {
 	 */
 	public static List<Filter> getFiltersForRequest(ServletRequest request) {
 		
-		List<Filter> filters = new Vector<Filter>();
+		List<Filter> filters = new ArrayList<>();
 		if (request != null) {
 			HttpServletRequest httpRequest = (HttpServletRequest) request;
 			String requestPath = httpRequest.getRequestURI();
@@ -656,18 +653,14 @@ public class WebModuleUtil {
 	 * @return
 	 */
 	private static Document getDWRModuleXML(InputStream inputStream, String realPath) {
-		Document dwrmodulexml = null;
+		Document dwrmodulexml;
 		try {
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
-			db.setEntityResolver(new EntityResolver() {
-				
-				@Override
-				public InputSource resolveEntity(String publicId, String systemId) throws SAXException, IOException {
-					// When asked to resolve external entities (such as a DTD) we return an InputSource
-					// with no data at the end, causing the parser to ignore the DTD.
-					return new InputSource(new StringReader(""));
-				}
+			db.setEntityResolver((publicId, systemId) -> {
+				// When asked to resolve external entities (such as a DTD) we return an InputSource
+				// with no data at the end, causing the parser to ignore the DTD.
+				return new InputSource(new StringReader(""));
 			});
 			
 			dwrmodulexml = db.parse(inputStream);
@@ -691,9 +684,10 @@ public class WebModuleUtil {
 		String messagesPath = realPath + "/WEB-INF/";
 		File folder = new File(messagesPath.replace("/", File.separator));
 		
-		if (folder.exists()) {
+		File[] files = folder.listFiles();
+		if (folder.exists() && files != null) {
 			Properties emptyProperties = new Properties();
-			for (File f : folder.listFiles()) {
+			for (File f : files) {
 				if (f.getName().startsWith("module_messages")) {
 					OpenmrsUtil.storeProperties(emptyProperties, f, "");
 				}

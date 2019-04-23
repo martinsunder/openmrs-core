@@ -9,147 +9,193 @@
  */
 package org.openmrs.module;
 
-import static org.hamcrest.Matchers.contains;
-import static org.junit.Assert.assertThat;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.is;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipEntry;
 
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.rules.TemporaryFolder;
+import org.openmrs.api.context.Context;
+import org.openmrs.messagesource.MessageSourceService;
+import org.openmrs.test.BaseContextSensitiveTest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.xml.sax.SAXException;
+import org.w3c.dom.ls.DOMImplementationLS;
+import org.w3c.dom.ls.LSOutput;
+import org.w3c.dom.ls.LSSerializer;
 
 /**
- * Tests ModuleFileParser
+ * Tests {@link ModuleFileParser} with a database and file IO.
+ * Mostly deprecated methods are tested but also contains one integration style test parsing the logic module from test resources.
  */
-public class ModuleFileParserTest {
-	
-	/**
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @see ModuleFileParser#getConditionalResources(org.w3c.dom.Element)
-	 */
+public class ModuleFileParserTest extends BaseContextSensitiveTest {
+
+	private static final String LOGIC_MODULE_PATH = "org/openmrs/module/include/logic-0.2.omod";
+
+	private static DocumentBuilderFactory documentBuilderFactory;
+
+	private static DocumentBuilder documentBuilder;
+
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
+
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Autowired
+	MessageSourceService messageSourceService;
+
+	@BeforeClass
+	public static void setUp() throws ParserConfigurationException {
+		documentBuilderFactory = DocumentBuilderFactory.newInstance();
+		documentBuilder = documentBuilderFactory.newDocumentBuilder();
+	}
+
 	@Test
-	public void getConditionalResources_shouldParseOpenmrsVersionAndModules()
-	        throws ParserConfigurationException, SAXException, IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><module configVersion=\"1.2\">"
-		        + "<conditionalResources><conditionalResource>"
-		        + "<path>/lib/htmlformentry-api-1.10*</path><openmrsVersion>1.10</openmrsVersion>"
-		        + "</conditionalResource><conditionalResource>"
-		        + "<path>/lib/metadatasharing-api-1.9*</path><openmrsVersion>1.9</openmrsVersion>"
-		        + "<modules><module><moduleId>metadatamapping</moduleId><version>1.0</version></module>"
-		        + "<module><moduleId>reporting</moduleId><version>2.0</version></module>"
-		        + "</modules></conditionalResource></conditionalResources></module>";
-		Element documentElement = getRootElement(xml);
-		
-		ModuleFileParser moduleFileParser = new ModuleFileParser();
-		List<ModuleConditionalResource> conditionalResources = moduleFileParser.getConditionalResources(documentElement);
-		
-		ModuleConditionalResource htmlformentry = new ModuleConditionalResource();
-		htmlformentry.setPath("/lib/htmlformentry-api-1.10*");
-		htmlformentry.setOpenmrsPlatformVersion("1.10");
-		
-		ModuleConditionalResource metadatasharing = new ModuleConditionalResource();
-		metadatasharing.setPath("/lib/metadatasharing-api-1.9*");
-		metadatasharing.setOpenmrsPlatformVersion("1.9");
-		ModuleConditionalResource.ModuleAndVersion metadatamapping = new ModuleConditionalResource.ModuleAndVersion();
-		metadatamapping.setModuleId("metadatamapping");
-		metadatamapping.setVersion("1.0");
-		ModuleConditionalResource.ModuleAndVersion reporting = new ModuleConditionalResource.ModuleAndVersion();
-		reporting.setModuleId("reporting");
-		reporting.setVersion("2.0");
-		
-		metadatasharing.setModules(Arrays.asList(metadatamapping, reporting));
-		
-		assertThat(conditionalResources, contains(htmlformentry, metadatasharing));
+	public void moduleFileParser_shouldFailCreatingParserFromFileIfGivenNull() {
+
+		expectModuleExceptionWithTranslatedMessage("Module.error.fileCannotBeNull");
+
+		new ModuleFileParser((File) null);
 	}
-	
-	private Element getRootElement(String xml) throws ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-		DocumentBuilder db = dbf.newDocumentBuilder();
-		Document document = db.parse(new ByteArrayInputStream(xml.getBytes()));
-		return document.getDocumentElement();
-	}
-	
-	/**
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @see ModuleFileParser#getConditionalResources(org.w3c.dom.Element)
-	 */
-	@Test(expected = IllegalArgumentException.class)
-	public void getConditionalResources_shouldThrowExceptionIfMultipleConditionalResourcesTagsFound()
-	        throws ParserConfigurationException, SAXException, IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><module configVersion=\"1.2\">"
-		        + "<conditionalResources></conditionalResources><conditionalResources></conditionalResources></module>";
-		Element documentElement = getRootElement(xml);
-		
-		new ModuleFileParser().getConditionalResources(documentElement);
-	}
-	
-	/**
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @see ModuleFileParser#getConditionalResources(org.w3c.dom.Element)
-	 */
-	@Test(expected = IllegalArgumentException.class)
-	public void getConditionalResources_shouldThrowExceptionIfConditionalResourcesContainsInvalidTag()
-	        throws ParserConfigurationException, SAXException, IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><module configVersion=\"1.2\">"
-		        + "<conditionalResources><invalidTag></invalidTag></conditionalResources></module>";
-		Element documentElement = getRootElement(xml);
-		
-		new ModuleFileParser().getConditionalResources(documentElement);
-	}
-	
-	/**
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @see ModuleFileParser#getConditionalResources(org.w3c.dom.Element)
-	 */
-	@Test(expected = IllegalArgumentException.class)
-	public void getConditionalResources_shouldThrowExceptionIfPathIsBlank()
-	        throws ParserConfigurationException, SAXException, IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><module configVersion=\"1.2\">"
-		        + "<conditionalResources><conditionalResource>" + "<path></path><openmrsVersion>1.10</openmrsVersion>"
-		        + "</conditionalResource>></conditionalResources></module>";
-		Element documentElement = getRootElement(xml);
-		
-		new ModuleFileParser().getConditionalResources(documentElement);
-	}
-	
-	/**
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @see ModuleFileParser#getConditionalResources(org.w3c.dom.Element)
-	 */
+
 	@Test
-	public void getConditionalResources_shouldParseConditionalResourceWithWhitespace()
-	        throws ParserConfigurationException, SAXException, IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><module configVersion=\"1.2\">"
-		        + "<conditionalResources>     	<conditionalResource>     	"
-		        + "<path>/lib/htmlformentry-api-1.10*</path><openmrsVersion>1.10</openmrsVersion>"
-		        + "</conditionalResource></conditionalResources></module>";
-		Element documentElement = getRootElement(xml);
-		
-		ModuleFileParser moduleFileParser = new ModuleFileParser();
-		List<ModuleConditionalResource> conditionalResources = moduleFileParser.getConditionalResources(documentElement);
-		
-		ModuleConditionalResource htmlformentry = new ModuleConditionalResource();
-		htmlformentry.setPath("/lib/htmlformentry-api-1.10*");
-		htmlformentry.setOpenmrsPlatformVersion("1.10");
-		
-		assertThat(conditionalResources, contains(htmlformentry));
+	public void moduleFileParser_shouldFailCreatingParserFromFileIfNotEndingInOmod() {
+
+		expectModuleExceptionWithTranslatedMessage("Module.error.invalidFileExtension");
+
+		new ModuleFileParser(new File("reporting.jar"));
+	}
+
+	@Test
+	public void moduleFileParser_shouldFailCreatingParserFromFileIfInputStreamClosed() throws IOException {
+
+		File moduleFile = new File(getClass().getClassLoader().getResource(LOGIC_MODULE_PATH).getPath());
+
+		InputStream inputStream = new FileInputStream(moduleFile);
+		inputStream.close();
+
+		expectModuleExceptionWithTranslatedMessage("Module.error.cannotCreateFile");
+
+		new ModuleFileParser(inputStream);
+	}
+
+	@Test
+	public void parse_shouldParseValidXmlConfigCreatedFromInputStream() throws IOException {
+
+		File moduleFile = new File(getClass().getClassLoader().getResource(LOGIC_MODULE_PATH).getPath());
+
+		ModuleFileParser parser = new ModuleFileParser(new FileInputStream(moduleFile));
+
+		Module module = parser.parse();
+
+		assertThat(module.getModuleId(), is("logic"));
+		assertThat(module.getVersion(), is("0.2"));
+		assertThat(module.getPackageName(), is("org.openmrs.logic"));
+		assertThat(module.getActivatorName(), is("org.openmrs.logic.LogicModuleActivator"));
+		assertThat(module.getMappingFiles().size(), is(1));
+		assertThat(module.getMappingFiles(), hasItems("LogicRuleToken.hbm.xml"));
+	}
+
+	@Test
+	public void parse_shouldFailIfModuleHasConfigInvalidConfigVersion() throws Exception {
+		// This test needs to be in a BaseContextSensitive test class
+		// since the implementation uses Context.getLocale()
+		// since thats static we would need to use PowerMock but then this
+		// would not show in our coverage.
+		// TODO - remove use of Context.getLocale() - by for example
+		// implementing MessageSourceService.getMessage(String key, Object[])
+		// which takes care of getting the users current locale and allows us
+		// to mock it using mockito
+
+		String invalidConfigVersion = "0.0.1";
+		String expectedMessage = messageSourceService
+			.getMessage("Module.error.invalidConfigVersion",
+				new Object[] { invalidConfigVersion, "1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6" }, Context.getLocale());
+		expectModuleExceptionWithMessage(expectedMessage);
+
+		Document configXml = documentBuilder.newDocument();
+		Element root = configXml.createElement("module");
+		configXml.appendChild(root);
+		configXml.getDocumentElement().setAttribute("configVersion", invalidConfigVersion);
+
+		ModuleFileParser parser = new ModuleFileParser(writeConfigXmlToFile(configXml));
+
+		parser.parse();
+	}
+
+	@Test
+	public void parse_shouldParseValidLogicModuleFromFile() {
+
+		File moduleFile = new File(getClass().getClassLoader().getResource(LOGIC_MODULE_PATH).getPath());
+		ModuleFileParser parser = new ModuleFileParser(Context.getMessageSourceService());
+
+		Module module = parser.parse(moduleFile);
+
+		assertThat(module.getModuleId(), is("logic"));
+		assertThat(module.getVersion(), is("0.2"));
+		assertThat(module.getPackageName(), is("org.openmrs.logic"));
+		assertThat(module.getActivatorName(), is("org.openmrs.logic.LogicModuleActivator"));
+		assertThat(module.getMappingFiles().size(), is(1));
+		assertThat(module.getMappingFiles(), hasItems("LogicRuleToken.hbm.xml"));
+	}
+
+	private void expectModuleExceptionWithTranslatedMessage(String s) {
+		String expectedMessage = messageSourceService.getMessage(s);
+		expectModuleExceptionWithMessage(expectedMessage);
+	}
+
+	private void expectModuleExceptionWithMessage(String s) {
+		String expectedMessage = messageSourceService.getMessage(s);
+		expectedException.expect(ModuleException.class);
+		expectedException.expectMessage(expectedMessage);
+	}
+
+	private File writeConfigXmlToFile(Document config) throws IOException {
+		File file = temporaryFolder.newFile("modulefileparsertest.omod");
+		JarOutputStream jar = createJarWithConfigXmlEntry(file);
+		writeConfigXmlToJar(jar, config);
+		return file;
+	}
+
+	private JarOutputStream createJarWithConfigXmlEntry(File file) throws IOException {
+		JarOutputStream jar = new JarOutputStream(new FileOutputStream(file));
+		ZipEntry config = new ZipEntry("config.xml");
+		jar.putNextEntry(config);
+		return jar;
+	}
+
+	private void writeConfigXmlToJar(JarOutputStream jar, Document config) throws IOException {
+		jar.write(getByteArray(config));
+		jar.closeEntry();
+		jar.close();
+	}
+
+	private byte[] getByteArray(Document config) {
+		DOMImplementationLS impl = (DOMImplementationLS) config.getImplementation();
+		LSSerializer serializer = impl.createLSSerializer();
+		LSOutput out = impl.createLSOutput();
+		out.setEncoding("UTF-8");
+		Writer stringWriter = new StringWriter();
+		out.setCharacterStream(stringWriter);
+		serializer.write(config, out);
+		return stringWriter.toString().getBytes();
 	}
 }

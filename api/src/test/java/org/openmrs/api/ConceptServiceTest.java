@@ -1515,7 +1515,7 @@ public class ConceptServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void saveConcept_shouldVoidTheConceptNameIfTheTextOfTheNameHasChanged() {
 		Concept concept = conceptService.getConceptByName("cd4 count");
-		Assert.assertEquals(false, conceptService.getConceptName(1847).getVoided().booleanValue());
+		Assert.assertEquals(false, conceptService.getConceptName(1847).getVoided());
 		for (ConceptName cn : concept.getNames()) {
 			if (cn.getConceptNameId().equals(1847)) {
 				cn.setName("new name");
@@ -1524,7 +1524,7 @@ public class ConceptServiceTest extends BaseContextSensitiveTest {
 		//ensure that the conceptName has actually been found and replaced
 		Assert.assertEquals(true, concept.hasName("new name", new Locale("en", "GB")));
 		conceptService.saveConcept(concept);
-		Assert.assertEquals(true, conceptService.getConceptName(1847).getVoided().booleanValue());
+		Assert.assertEquals(true, conceptService.getConceptName(1847).getVoided());
 	}
 	
 	@Test
@@ -1702,7 +1702,7 @@ public class ConceptServiceTest extends BaseContextSensitiveTest {
 				if (!CollectionUtils.isEmpty(concept.getNames(locale))) {
 					Assert.assertNotNull("Concept with Id: " + concept.getConceptId() + " has no preferred name in locale:"
 					        + locale, concept.getPreferredName(locale));
-					Assert.assertEquals(true, concept.getPreferredName(locale).getLocalePreferred().booleanValue());
+					Assert.assertEquals(true, concept.getPreferredName(locale).getLocalePreferred());
 				}
 			}
 		}
@@ -3294,9 +3294,11 @@ public class ConceptServiceTest extends BaseContextSensitiveTest {
 		Concept concept = conceptService.getConceptByMapping(code2, "SNOMED CT");
 		
 		//when
-		List<ConceptSearchResult> concepts1 = conceptService.getConcepts(code1, Arrays.asList(Context.getLocale()), false,
+		List<ConceptSearchResult> concepts1 = conceptService.getConcepts(code1,
+				Collections.singletonList(Context.getLocale()), false,
 		    null, null, null, null, null, null, null);
-		List<ConceptSearchResult> concepts2 = conceptService.getConcepts(code2, Arrays.asList(Context.getLocale()), false,
+		List<ConceptSearchResult> concepts2 = conceptService.getConcepts(code2,
+				Collections.singletonList(Context.getLocale()), false,
 		    null, null, null, null, null, null, null);
 		
 		//then

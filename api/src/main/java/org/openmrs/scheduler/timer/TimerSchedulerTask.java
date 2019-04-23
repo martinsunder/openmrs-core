@@ -27,7 +27,7 @@ public class TimerSchedulerTask extends TimerTask {
 	private Task task;
 	
 	/** Logger */
-	private static Logger log = LoggerFactory.getLogger(TimerSchedulerTask.class);
+	private static final Logger log = LoggerFactory.getLogger(TimerSchedulerTask.class);
 	
 	/** * Public constructor */
 	public TimerSchedulerTask(Task task) {
@@ -57,7 +57,7 @@ public class TimerSchedulerTask extends TimerTask {
 	 * Save the last execution time in the TaskDefinition
 	 */
 	private static void saveLastExecutionTime(Task task) {
-		TaskDefinition taskDefinition = null;
+		TaskDefinition taskDefinition;
 		try {
 			// We re-get the task definition in case the copy set during the
 			// task initialization has become stale.  NOTE: If a task does not

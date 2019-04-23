@@ -11,7 +11,7 @@ package org.openmrs;
 
 import static org.openmrs.Order.Action.DISCONTINUE;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.util.OpenmrsUtil;
 
 /**
@@ -293,10 +293,7 @@ public class DrugOrder extends Order {
 			DosingInstructions instructions = getDosingType().newInstance();
 			return instructions.getDosingInstructions(this);
 		}
-		catch (InstantiationException e) {
-			throw new IllegalStateException(e);
-		}
-		catch (IllegalAccessException e) {
+		catch (InstantiationException | IllegalAccessException e) {
 			throw new IllegalStateException(e);
 		}
 	}

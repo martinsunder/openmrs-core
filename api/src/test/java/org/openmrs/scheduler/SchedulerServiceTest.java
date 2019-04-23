@@ -39,7 +39,7 @@ import org.openmrs.util.OpenmrsClassLoader;
 public class SchedulerServiceTest extends BaseContextSensitiveTest {
 	
 	// so that we can guarantee tests running accurately instead of tests interfering with the next
-	public final Integer TASK_TEST_METHOD_LOCK = Integer.valueOf(1);
+	public final Integer TASK_TEST_METHOD_LOCK = 1;
 	
 	// used to check for concurrent task execution. Only initialized by code protected by TASK_TEST_METHOD_LOCK.
 	public static CountDownLatch latch;
@@ -51,7 +51,7 @@ public class SchedulerServiceTest extends BaseContextSensitiveTest {
 	// time to wait for concurrent tasks to execute, should only wait this long if there's a test failure
 	public static final long CONCURRENT_TASK_WAIT_MS = 30000;
 	
-	public static Logger log = LogManager.getLogger(SchedulerServiceTest.class);
+	private static final Logger log = LogManager.getLogger(SchedulerServiceTest.class);
 	
 	@Before
 	public void setUp() throws Exception {
@@ -345,7 +345,7 @@ public class SchedulerServiceTest extends BaseContextSensitiveTest {
 		td.setTaskClass(BareTask.class.getName());
 		td.setStartTime(null);
 		td.setName("name");
-		td.setRepeatInterval(5000l);
+		td.setRepeatInterval(5000L);
 		
 		synchronized (TASK_TEST_METHOD_LOCK) {
 			latch = new CountDownLatch(1);
@@ -384,7 +384,7 @@ public class SchedulerServiceTest extends BaseContextSensitiveTest {
 		td.setStartOnStartup(false);
 		td.setTaskClass(StoreExecutionTimeTask.class.getName());
 		td.setStartTime(null);
-		td.setRepeatInterval(0l);//0 indicates single execution
+		td.setRepeatInterval(0L);//0 indicates single execution
 		synchronized (TASK_TEST_METHOD_LOCK) {
 			latch = new CountDownLatch(1);
 			service.saveTaskDefinition(td);

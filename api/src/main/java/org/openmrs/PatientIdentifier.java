@@ -9,6 +9,7 @@
  */
 package org.openmrs;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Comparator;
@@ -35,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * @see org.openmrs.PatientIdentifierType
  */
 @Indexed
-public class PatientIdentifier extends BaseOpenmrsData implements java.io.Serializable, Comparable<PatientIdentifier> {
+public class PatientIdentifier extends BaseChangeableOpenmrsData implements java.io.Serializable, Cloneable, Comparable<PatientIdentifier> {
 	
 	public static final long serialVersionUID = 1123121L;
 	
@@ -105,7 +106,7 @@ public class PatientIdentifier extends BaseOpenmrsData implements java.io.Serial
 		// loop over all of the selected methods and compare this and other
 		for (String methodName : methods) {
 			try {
-				Method method = identifierClass.getMethod(methodName, new Class[] {});
+				Method method = identifierClass.getMethod(methodName);
 				
 				Object thisValue = method.invoke(this);
 				Object otherValue = method.invoke(otherIdentifier);
@@ -118,13 +119,10 @@ public class PatientIdentifier extends BaseOpenmrsData implements java.io.Serial
 			catch (NoSuchMethodException e) {
 				log.warn("No such method for comparison " + methodName, e);
 			}
-			catch (IllegalAccessException e) {
+			catch (IllegalAccessException | InvocationTargetException e) {
 				log.error("Error while comparing identifiers", e);
 			}
-			catch (InvocationTargetException e) {
-				log.error("Error while comparing identifiers", e);
-			}
-			
+
 		}
 		
 		return returnValue;
@@ -264,12 +262,32 @@ public class PatientIdentifier extends BaseOpenmrsData implements java.io.Serial
 	public void setPatientIdentifierId(Integer patientIdentifierId) {
 		this.patientIdentifierId = patientIdentifierId;
 	}
+
+	/**
+	 * bitwise copy of the PatientIdentifier object. NOTICE: THIS WILL NOT COPY THE PATIENT OBJECT. The
+	 * PatientIdentifier.patient object in this object AND the cloned object will point at the same
+	 * patient
+	 *
+	 * @return New PatientIdentifier object
+	 * @since 2.2.0
+	 */
+	@Override
+	public Object clone() {
+		try {
+			return super.clone();
+		}
+		catch (CloneNotSupportedException e) {
+			throw new InternalError("PatientIdentifier should be cloneable");
+		}
+	}
 	
 	/**
 	 Provides a default comparator.
 	 @since 1.12
 	 **/
-	public static class DefaultComparator implements Comparator<PatientIdentifier> {
+	public static class DefaultComparator implements Comparator<PatientIdentifier>, Serializable {
+
+		private static final long serialVersionUID = 1L;
 		
 		@Override
 		public int compare(PatientIdentifier pi1, PatientIdentifier pi2) {
@@ -277,7 +295,7 @@ public class PatientIdentifier extends BaseOpenmrsData implements java.io.Serial
 			if (pi2 != null) {
 				retValue = pi1.getVoided().compareTo(pi2.getVoided());
 				if (retValue == 0) {
-					retValue = pi1.isPreferred().compareTo(pi2.isPreferred());
+					retValue = pi1.getPreferred().compareTo(pi2.getPreferred());
 				}
 				if (retValue == 0) {
 					retValue = OpenmrsUtil.compareWithNullAsLatest(pi1.getDateCreated(), pi2.getDateCreated());

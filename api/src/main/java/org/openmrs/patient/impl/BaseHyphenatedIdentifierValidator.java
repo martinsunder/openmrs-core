@@ -43,9 +43,8 @@ public abstract class BaseHyphenatedIdentifierValidator implements IdentifierVal
 		checkAllowedIdentifier(undecoratedIdentifier);
 		
 		char checkLetter = convertCheckDigitToChar(getCheckDigit(undecoratedIdentifier));
-		
-		String result = undecoratedIdentifier + "-" + checkLetter;
-		return result;
+
+		return undecoratedIdentifier + "-" + checkLetter;
 	}
 	
 	/**
@@ -71,7 +70,7 @@ public abstract class BaseHyphenatedIdentifierValidator implements IdentifierVal
 		
 		int computedCheckDigit = getCheckDigit(idWithoutCheckDigit);
 		
-		String checkDigit = identifier.substring(identifier.indexOf("-") + 1, identifier.length());
+		String checkDigit = identifier.substring(identifier.indexOf("-") + 1);
 		
 		if (checkDigit.length() != 1) {
 			throw new UnallowedIdentifierException("Identifier must have a check digit of length 1.");
@@ -108,7 +107,7 @@ public abstract class BaseHyphenatedIdentifierValidator implements IdentifierVal
 			checkDigit = "9";
 		}
 		
-		int givenCheckDigit = 10;
+		int givenCheckDigit;
 		
 		try {
 			givenCheckDigit = Integer.valueOf(checkDigit);

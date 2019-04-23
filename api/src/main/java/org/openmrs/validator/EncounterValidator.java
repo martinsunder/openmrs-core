@@ -11,7 +11,7 @@ package org.openmrs.validator;
 
 import java.util.Date;
 
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.openmrs.Encounter;
 import org.openmrs.Visit;
 import org.openmrs.annotation.Handler;
@@ -40,9 +40,7 @@ public class EncounterValidator implements Validator {
 	 */
 	@Override
 	public boolean supports(Class<?> c) {
-		if (log.isDebugEnabled()) {
-			log.debug(this.getClass().getName() + ".supports: " + c.getName());
-		}
+		log.debug("{}.supports: {}", this.getClass().getName(), c.getName());
 		return Encounter.class.isAssignableFrom(c);
 	}
 	
@@ -66,9 +64,7 @@ public class EncounterValidator implements Validator {
 	 */
 	@Override
 	public void validate(Object obj, Errors errors) throws APIException {
-		if (log.isDebugEnabled()) {
-			log.debug(this.getClass().getName() + ".validate...");
-		}
+		log.debug("{}.validate...", this.getClass().getName());
 		
 		if (obj == null || !(obj instanceof Encounter)) {
 			throw new IllegalArgumentException("The parameter obj should not be null and must be of type " + Encounter.class);

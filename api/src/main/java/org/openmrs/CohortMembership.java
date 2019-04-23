@@ -10,20 +10,17 @@
 package org.openmrs;
 
 import java.util.Date;
+import java.util.Objects;
 
 import org.openmrs.util.OpenmrsUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @since 2.1.0
  */
-public class CohortMembership extends BaseOpenmrsData implements Comparable<CohortMembership> {
+public class CohortMembership extends BaseChangeableOpenmrsData implements Comparable<CohortMembership> {
 	
 	public static final long serialVersionUID = 0L;
-	
-	protected static final Logger log = LoggerFactory.getLogger(CohortMembership.class);
-	
+
 	private Integer cohortMemberId;
 	
 	private Cohort cohort;
@@ -55,7 +52,7 @@ public class CohortMembership extends BaseOpenmrsData implements Comparable<Coho
 	public boolean isActive(Date asOfDate) {
 		Date date = asOfDate == null ? new Date() : asOfDate;
 		return !this.getVoided() && OpenmrsUtil.compare(startDate, date) <= 0
-				&& OpenmrsUtil.compareWithNullAsLatest(date, endDate) <= 0;
+			&& OpenmrsUtil.compareWithNullAsLatest(date, endDate) <= 0;
 	}
 	
 	public boolean isActive() {
@@ -147,5 +144,37 @@ public class CohortMembership extends BaseOpenmrsData implements Comparable<Coho
 			ret = this.getUuid().compareTo(o.getUuid());
 		}
 		return ret;
+	}
+	
+	/**
+	 * @since 2.3.0
+	 * Indicates if a given cohortMembership object is equal to this one
+	 * 
+	 * @param otherCohortMembershipObject is a CohortMembership object that should be checked for equality with this object
+	 * @return true if both objects are logically equal. This is the case when endDate, startDate and patientId are equal  
+	 */
+	@Override
+	public boolean equals(Object otherCohortMembershipObject) {
+		if(otherCohortMembershipObject == null || !(otherCohortMembershipObject instanceof CohortMembership)){
+			return false;
+		}
+		CohortMembership otherCohortMembership = (CohortMembership)otherCohortMembershipObject;
+		if(this == otherCohortMembership) return true;
+		
+		
+		return ((endDate != null ) ? endDate.equals(otherCohortMembership.getEndDate()) : otherCohortMembership.getEndDate() == null)
+			&&
+			((startDate !=null) ? startDate.equals(otherCohortMembership.getStartDate())  : otherCohortMembership.getStartDate() == null)
+			&& 
+			((patientId != null) ? patientId.equals(otherCohortMembership.getPatientId()) : otherCohortMembership.getPatientId() == null);
+	}
+	/**
+	 * @since 2.3.0
+	 * 
+	 * Creates a hash code of this object
+    */
+	@Override
+	public int hashCode() {
+		return Objects.hash(patientId, endDate, startDate);
 	}
 }

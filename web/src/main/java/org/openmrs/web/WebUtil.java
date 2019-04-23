@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.GlobalProperty;
 import org.openmrs.api.GlobalPropertyListener;
 import org.openmrs.api.context.Context;
@@ -29,10 +29,8 @@ import org.slf4j.LoggerFactory;
 
 public class WebUtil implements GlobalPropertyListener {
 	
-	private static Logger log = LoggerFactory.getLogger(WebUtil.class);
+	private static final Logger log = LoggerFactory.getLogger(WebUtil.class);
 	
-	private static String defaultDateCache = null;
-
 	/**
 	 * Encodes for (X)HTML text content and text attributes.
 	 *
@@ -214,36 +212,38 @@ public class WebUtil implements GlobalPropertyListener {
 	}
 
 	public static String escapeQuotes(String s) {
-		
-		if (s == null) {
+		String tmpS = s;
+		if (tmpS == null) {
 			return "";
 		}
 		
-		s = s.replace("\"", "\\\"");
+		tmpS = tmpS.replace("\"", "\\\"");
 		
-		return s;
+		return tmpS;
 	}
 	
 	public static String escapeNewlines(String s) {
-		if (s == null) {
+		String tmpS = s;
+		if (tmpS == null) {
 			return "";
 		}
 		
-		s = s.replace("\n", "\\n");
+		tmpS = tmpS.replace("\n", "\\n");
 		
-		return s;
+		return tmpS;
 	}
 	
 	public static String escapeQuotesAndNewlines(String s) {
-		if (s == null) {
+		String tmpS = s;
+		if (tmpS == null) {
 			return "";
 		}
+
+		tmpS = tmpS.replace("\"", "\\\"");
+		tmpS = tmpS.replace("\r\n", "\\r\\n");
+		tmpS = tmpS.replace("\n", "\\n");
 		
-		s = s.replace("\"", "\\\"");
-		s = s.replace("\r\n", "\\r\\n");
-		s = s.replace("\n", "\\n");
-		
-		return s;
+		return tmpS;
 	}
 	
 	/**
@@ -259,22 +259,23 @@ public class WebUtil implements GlobalPropertyListener {
 		}
 		
 		// for unix based filesystems
-		int index = filename.lastIndexOf("/");
+		String tmpFilename = filename;
+		int index = tmpFilename.lastIndexOf("/");
 		if (index != -1) {
-			filename = filename.substring(index + 1);
+			tmpFilename = tmpFilename.substring(index + 1);
 		}
 		
 		// for windows based filesystems
-		index = filename.lastIndexOf("\\");
+		index = tmpFilename.lastIndexOf("\\");
 		if (index != -1) {
-			filename = filename.substring(index + 1);
+			tmpFilename = tmpFilename.substring(index + 1);
 		}
 		
 		if (log.isDebugEnabled()) {
-			log.debug("Returning stripped down filename: " + filename);
+			log.debug("Returning stripped down filename: " + tmpFilename);
 		}
 		
-		return filename;
+		return tmpFilename;
 	}
 	
 	/**
@@ -417,16 +418,11 @@ public class WebUtil implements GlobalPropertyListener {
 		return OpenmrsConstants.GP_SEARCH_DATE_DISPLAY_FORMAT.equals(propertyName);
 	}
 	
-	public static void setDefaultDateCache(String defaultDateCache) {
-		WebUtil.defaultDateCache = defaultDateCache;
-	}
-	
 	/**
 	 * @see org.openmrs.api.GlobalPropertyListener#globalPropertyChanged(org.openmrs.GlobalProperty)
 	 */
 	@Override
 	public void globalPropertyChanged(GlobalProperty newValue) {
-		setDefaultDateCache(null);
 	}
 	
 	/**
@@ -434,6 +430,5 @@ public class WebUtil implements GlobalPropertyListener {
 	 */
 	@Override
 	public void globalPropertyDeleted(String propertyName) {
-		setDefaultDateCache(null);
 	}
 }

@@ -9,10 +9,9 @@
  */
 package org.openmrs.layout.name;
 
+import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.LayoutSupport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @since 1.12
@@ -20,8 +19,6 @@ import org.slf4j.LoggerFactory;
 public class NameSupport extends LayoutSupport<NameTemplate> {
 	
 	private static NameSupport singleton;
-	
-	static Logger log = LoggerFactory.getLogger(NameSupport.class);
 	
 	public NameSupport() {
 		if (singleton == null) {
@@ -31,7 +28,7 @@ public class NameSupport extends LayoutSupport<NameTemplate> {
 	
 	public static NameSupport getInstance() {
 		if (singleton == null) {
-			throw new RuntimeException("Not Yet Instantiated");
+			throw new APIException("Not Yet Instantiated");
 		} else {
 			return singleton;
 		}

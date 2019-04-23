@@ -14,14 +14,14 @@ import java.text.NumberFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmrs.api.context.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Format {
 	
-	private static Logger log = LoggerFactory.getLogger(Format.class);
+	private static final Logger log = LoggerFactory.getLogger(Format.class);
 	
 	public enum FORMAT_TYPE {
 		DATE,
@@ -42,7 +42,7 @@ public class Format {
 	}
 	
 	public static String format(double d) {
-		return "" + ((d == (int) d) ? (int) d : d);
+		return "" + (d);
 	}
 	
 	public static String format(Double d) {
@@ -86,7 +86,7 @@ public class Format {
 		}
 		log.debug("Formatting date: " + date + " with locale " + locale);
 		
-		DateFormat dateFormat = null;
+		DateFormat dateFormat;
 		
 		if (type == FORMAT_TYPE.TIMESTAMP) {
 			dateFormat = DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG, locale);

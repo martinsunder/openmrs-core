@@ -25,7 +25,7 @@ import org.openmrs.api.context.Context;
  * Drug
  */
 @Indexed
-public class Drug extends BaseOpenmrsMetadata {
+public class Drug extends BaseChangeableOpenmrsMetadata {
 	
 	public static final long serialVersionUID = 285L;
 	
@@ -55,7 +55,7 @@ public class Drug extends BaseOpenmrsMetadata {
 	
 	/** default constructor */
 	public Drug() {
-		ingredients = new LinkedHashSet<DrugIngredient>();
+		ingredients = new LinkedHashSet<>();
 	}
 	
 	/** constructor with id */
@@ -243,7 +243,7 @@ public class Drug extends BaseOpenmrsMetadata {
 	 */
 	public Set<DrugReferenceMap> getDrugReferenceMaps() {
 		if (drugReferenceMaps == null) {
-			drugReferenceMaps = new LinkedHashSet<DrugReferenceMap>();
+			drugReferenceMaps = new LinkedHashSet<>();
 		}
 		return drugReferenceMaps;
 	}

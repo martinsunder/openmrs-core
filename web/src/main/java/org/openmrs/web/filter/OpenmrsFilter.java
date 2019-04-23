@@ -36,7 +36,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class OpenmrsFilter extends OncePerRequestFilter {
 	
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(OpenmrsFilter.class);
 	
 	/**
 	 * @see javax.servlet.Filter#destroy()
@@ -80,7 +80,7 @@ public class OpenmrsFilter extends OncePerRequestFilter {
 		// if there isn't a userContext on the session yet, create one
 		// and set it onto the session
 		if (userContext == null) {
-			userContext = new UserContext();
+			userContext = new UserContext(Context.getAuthenticationScheme());
 			httpSession.setAttribute(WebConstants.OPENMRS_USER_CONTEXT_HTTPSESSION_ATTR, userContext);
 			
 			if (log.isDebugEnabled()) {

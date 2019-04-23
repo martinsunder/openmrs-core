@@ -9,19 +9,7 @@
  */
 package org.openmrs;
 
-import java.text.DateFormat;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Locale;
-import java.util.Set;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.annotation.AllowDirectAccess;
 import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
@@ -32,6 +20,17 @@ import org.openmrs.util.Format.FORMAT_TYPE;
 import org.openmrs.util.OpenmrsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.text.DateFormat;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * An observation is a single unit of clinical information. <br>
@@ -62,7 +61,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @see Encounter
  */
-public class Obs extends BaseOpenmrsData {
+public class Obs extends BaseChangeableOpenmrsData {
 	
 	/**
 	 * @since 2.1.0
@@ -234,6 +233,7 @@ public class Obs extends BaseOpenmrsData {
 		newObs.setVoidReason(obsToCopy.getVoidReason());
 		newObs.setStatus(obsToCopy.getStatus());
 		newObs.setInterpretation(obsToCopy.getInterpretation());
+		newObs.setOrder(obsToCopy.getOrder());
 		
 		newObs.setValueComplex(obsToCopy.getValueComplex());
 		newObs.setComplexData(obsToCopy.getComplexData());
@@ -431,7 +431,8 @@ public class Obs extends BaseOpenmrsData {
 	 * @see #hasGroupMembers()
 	 */
 	public Set<Obs> getGroupMembers() {
-		return getGroupMembers(false); //same as just returning groupMembers
+		//same as just returning groupMembers
+		return getGroupMembers(false); 
 	}
 	
 	/**
@@ -452,14 +453,8 @@ public class Obs extends BaseOpenmrsData {
 			//Empty set so return null
 			return null;
 		}
-		Set<Obs> nonVoided = new LinkedHashSet<Obs>(groupMembers);
-		Iterator<Obs> i = nonVoided.iterator();
-		while (i.hasNext()) {
-			Obs obs = i.next();
-			if (obs.getVoided()) {
-				i.remove();
-			}
-		}
+		Set<Obs> nonVoided = new LinkedHashSet<>(groupMembers);
+		nonVoided.removeIf(BaseOpenmrsData::getVoided);
 		return nonVoided;
 	}
 	
@@ -478,7 +473,8 @@ public class Obs extends BaseOpenmrsData {
 	 * @should not mark the obs as dirty when the set is replaced with another with same members
 	 */
 	public void setGroupMembers(Set<Obs> groupMembers) {
-		this.groupMembers = groupMembers; //Copy over the entire list
+		//Copy over the entire list
+		this.groupMembers = groupMembers; 
 		
 	}
 	
@@ -498,7 +494,7 @@ public class Obs extends BaseOpenmrsData {
 		}
 		
 		if (getGroupMembers() == null) {
-			groupMembers = new HashSet<Obs>();
+			groupMembers = new HashSet<>();
 		}
 		
 		// a quick sanity check to make sure someone isn't adding
@@ -542,7 +538,7 @@ public class Obs extends BaseOpenmrsData {
 	 * @return Set&lt;Obs&gt;
 	 */
 	public Set<Obs> getRelatedObservations() {
-		Set<Obs> ret = new HashSet<Obs>();
+		Set<Obs> ret = new HashSet<>();
 		if (this.isObsGrouping()) {
 			ret.addAll(this.getGroupMembers());
 			Obs parentObs = this;
@@ -649,7 +645,7 @@ public class Obs extends BaseOpenmrsData {
 	public void setValueBoolean(Boolean valueBoolean) {
 		if (getConcept() != null && getConcept().getDatatype() != null && getConcept().getDatatype().isBoolean()) {
 			if (valueBoolean != null) {
-				setValueCoded(valueBoolean.booleanValue() ? Context.getConceptService().getTrueConcept() : Context
+				setValueCoded(valueBoolean ? Context.getConceptService().getTrueConcept() : Context
 				        .getConceptService().getFalseConcept());
 			} else {
 				setValueCoded(null);
@@ -974,7 +970,8 @@ public class Obs extends BaseOpenmrsData {
 		// formatting for the return of numbers of type double
 		NumberFormat nf = NumberFormat.getNumberInstance(locale);
 		DecimalFormat df = (DecimalFormat) nf;
-		df.applyPattern("#0.0#####"); // formatting style up to 6 digits
+		// formatting style up to 6 digits
+		df.applyPattern("#0.0#####"); 
 		//branch on hl7 abbreviations
 		if (getConcept() != null) {
 			String abbrev = getConcept().getDatatype().getHl7Abbreviation();
@@ -987,8 +984,8 @@ public class Obs extends BaseOpenmrsData {
 				if (getValueDrug() != null) {
 					return getValueDrug().getFullName(locale);
 				} else {
-					ConceptName valueCodedName = getValueCodedName();
-					if (valueCodedName != null) {
+					ConceptName codedName = getValueCodedName();
+					if (codedName != null) {
 						return getValueCoded().getName(locale, false).getName();
 					} else {
 						ConceptName fallbackName = getValueCoded().getName();
@@ -1025,10 +1022,10 @@ public class Obs extends BaseOpenmrsData {
 			} else if ("ST".equals(abbrev)) {
 				return getValueText();
 			} else if ("ED".equals(abbrev) && getValueComplex() != null) {
-				String[] valueComplex = getValueComplex().split("\\|");
-				for (int i = 0; i < valueComplex.length; i++) {
-					if (StringUtils.isNotEmpty(valueComplex[i])) {
-						return valueComplex[i].trim();
+				String[] valuesComplex = getValueComplex().split("\\|");
+				for (String value : valuesComplex) {
+					if (StringUtils.isNotEmpty(value)) {
+						return value.trim();
 					}
 				}
 			}
@@ -1070,10 +1067,10 @@ public class Obs extends BaseOpenmrsData {
 		// returns the title portion of the valueComplex
 		// which is everything before the first bar '|' character.
 		if (getValueComplex() != null) {
-			String[] valueComplex = getValueComplex().split("\\|");
-			for (int i = 0; i < valueComplex.length; i++) {
-				if (StringUtils.isNotEmpty(valueComplex[i])) {
-					return valueComplex[i].trim();
+			String[] valuesComplex = getValueComplex().split("\\|");
+			for (String value : valuesComplex) {
+				if (StringUtils.isNotEmpty(value)) {
+					return value.trim();
 				}
 			}
 		}
